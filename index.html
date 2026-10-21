@@ -6,7 +6,8 @@
 <title>ServiceSync · Mont Carmel</title>
 <meta name="description" content="Sunday service scheduling and coordination for Mont Carmel Church.">
 <meta name="theme-color" content="#ffffff">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='white' stroke='%238a2121' stroke-width='4'/%3E%3Ctext x='32' y='41' font-family='Georgia' font-weight='700' font-size='24' text-anchor='middle' fill='%238a2121'%3EMC%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap">
 <style>
@@ -37,7 +38,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 header.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
 .bar{display:flex;align-items:center;gap:16px;padding-block:12px;flex-wrap:wrap}
 .logo{display:flex;align-items:center;gap:10px;min-width:0}
-.mc{width:42px;height:42px;border-radius:50%;border:2px solid var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;color:var(--accent);font-size:.95rem;flex:none}
+.mc{width:42px;height:42px;border-radius:50%;border:2px solid var(--accent);display:block;object-fit:cover;background:#000;flex:none}
 .logo b{display:block;font-family:var(--f-display);font-size:1.15rem;color:var(--brand);line-height:1.1}
 .logo small{display:block;font-size:.68rem;letter-spacing:.16em;color:var(--accent);font-weight:600}
 nav.tabs{display:flex;gap:4px;margin-inline:auto;overflow-x:auto;scrollbar-width:none;max-width:100%}
@@ -211,7 +212,7 @@ label.f{display:grid;gap:6px;font-size:.85rem;font-weight:600}
 .land-copy{display:grid;gap:18px}
 h1.big{font-size:clamp(2.2rem,5vw,3.2rem)}
 .land-art{border-radius:20px;min-height:320px;background:linear-gradient(140deg,var(--hero1),var(--hero2) 55%,var(--hero3));display:grid;place-content:center;gap:14px;padding:28px;box-shadow:0 10px 30px rgba(25,32,70,.18)}
-.mc.xl{width:96px;height:96px;font-size:2rem;border-color:#fff;color:#fff;justify-self:center;margin-bottom:8px}
+.mc.xl{width:120px;height:120px;border:3px solid #fff;justify-self:center;margin-bottom:8px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 .land-svc{background:var(--hero-card);border:1px solid var(--hero-line);border-radius:12px;padding:12px 18px;color:#fff;display:grid;min-width:240px}
 .land-svc span{color:var(--hero-muted);font-size:.9rem}
 .feat h3{font-size:1rem}
@@ -230,7 +231,7 @@ input[type=email]{background:var(--surface);border:1px solid var(--line);border-
 
 <header class="top">
   <div class="wrap bar">
-    <div class="logo"><div class="mc">MC</div><div><b>ServiceSync</b><small>MONT CARMEL</small></div></div>
+    <div class="logo"><img class="mc" src="/mc-logo.png" alt="Mont Carmel"><div><b>ServiceSync</b><small>MONT CARMEL</small></div></div>
     <nav class="tabs" role="tablist" id="tabs"></nav>
     <div class="who" id="who"></div>
   </div>
@@ -643,11 +644,11 @@ function vLanding(){
   return `<section class="land"><div class="land-copy"><div class="eyebrow" style="color:var(--accent)">Mont Carmel · Service coordination</div><h1 class="big">Every Sunday, covered and calm.</h1>
     <p class="sub" style="font-size:1.02rem;max-width:46ch">ServiceSync helps the coordination team plan both services, share the schedule by text, and run each Sunday on time.</p>
     <div><button class="btn cta lg" data-act="goSignin">Open ServiceSync</button></div></div>
-    <div class="land-art" aria-hidden="true"><div class="mc xl">MC</div><div class="land-svc"><b>English Service</b><span>9:00 – 10:45 AM</span></div><div class="land-svc"><b>Culte en français</b><span>11:30 AM – 1:45 PM</span></div></div></section>
+    <div class="land-art" aria-hidden="true"><img class="mc xl" src="/mc-logo.png" alt=""><div class="land-svc"><b>English Service</b><span>9:00 – 10:45 AM</span></div><div class="land-svc"><b>Culte en français</b><span>11:30 AM – 1:45 PM</span></div></div></section>
     <div class="stats">${f.map(([i,t,d])=>`<div class="card stat feat">${ic(i)}<h3>${t}</h3><span>${d}</span></div>`).join('')}</div>`;
 }
 function vSignin(){
-  return `<div class="auth card"><div class="logo"><div class="mc">MC</div><div><b>ServiceSync</b><small>MONT CARMEL</small></div></div>
+  return `<div class="auth card"><div class="logo"><img class="mc" src="/mc-logo.png" alt="Mont Carmel"><div><b>ServiceSync</b><small>MONT CARMEL</small></div></div>
     <div><h1 style="font-size:1.6rem">Welcome</h1><p class="sub">Coordinators: use the email the administrator has on the roster and you'll be linked automatically.</p></div>
     ${ui.authSent?`<div class="callout">${esc(ui.authMsg)}</div><button class="btn" data-act="goSignin" onclick="ui.authSent=false">Use a different email</button>`:`
     <label class="f">Email<input type="email" id="aEmail" autocomplete="email" placeholder="you@example.com"></label>
