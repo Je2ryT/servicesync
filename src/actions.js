@@ -12,6 +12,9 @@ import {
 } from './domain.js';
 import { timerOf } from './timer.js';
 import { canRun } from './views/timer.js';
+import { memberForm, ciListHtml, ciService } from './views/checkin.js';
+import { eventForm } from './views/events.js';
+import { attKey } from './members.js';
 import { timeRange } from './views/shared.js';
 
 /* ---------- helpers ---------- */
@@ -56,6 +59,12 @@ async function autofill(m) {
 }
 const val = id => document.getElementById(id)?.value ?? '';
 const tapTwice = (el, label) => { if (el.dataset.sure === '1') return true; el.dataset.sure = '1'; el.textContent = label; return false; };
+
+/** Redraw the check-in list and counts without disturbing the search box. */
+function refreshCheckin() {
+  const l = document.getElementById('ciList');
+  if (l && document.activeElement?.id === 'ciQ') l.innerHTML = ciListHtml(); else render();
+}
 
 /* ---------- live timer ---------- */
 const lastTap = { k: '', t: 0 };
@@ -202,6 +211,55 @@ export const H = {
     if (r) reload();
   },
 
+  /* check-in */
+  ciSvc(el) { ui.ciSvc = el.dataset.svc; render(); },
+  ciSearch(el) { ui.ciQuery = el.value; const l = document.getElementById('ciList'); if (l) l.innerHTML = ciListHtml(); },
+  async ciToggle(el) {
+    const id = el.dataset.id; const svc = ciService(); const date = T.todayIso; const k = attKey(id, date, svc);
+    if (S.att[k]) {
+      if (el.dataset.sure !== '1') { el.dataset.sure = '1'; el.querySelector('small').textContent = 'Tap again to undo check-in'; return; }
+      delete S.att[k]; refreshCheckin();
+      if (await q(sb.from('attendance').delete().eq('member_id', id).eq('date', date).eq('svc', svc))) reload();
+      return;
+    }
+    S.att[k] = { member: id, date, svc, at: Date.now(), by: myPerson() }; refreshCheckin();
+    if (await q(sb.from('attendance').upsert({ member_id: id, date, svc, by_coord: myPerson() }, { onConflict: 'member_id,date,svc', ignoreDuplicates: true }))) reload();
+    else { delete S.att[k]; refreshCheckin(); }
+  },
+  addMember(el) { modal(memberForm(null, el.dataset.name || '')); },
+  editMember(el) { modal(memberForm(el.dataset.id)); },
+  async saveMember(el) {
+    const name = val('mName').trim().replace(/\s+/g, ' '); if (!name) { toast('Enter a name.'); return; }
+    const id = el.dataset.id; const checkIn = !id && !!document.getElementById('mIn')?.checked;
+    const row = { name, phone: val('mPhone').trim() || null, email: val('mEmail').trim().toLowerCase() || null, lang: val('mLang') || 'fr', status: val('mStatus') || 'newcomer', household: val('mHouse').trim() || null };
+    if (me.admin && document.getElementById('mNotes')) row.notes = val('mNotes').trim() || null;
+    closeModal();
+    let saved;
+    if (id) saved = await q(sb.from('members').update(row).eq('id', id).select('id').single());
+    else saved = await q(sb.from('members').insert({ ...row, created_by: myPerson() }).select('id').single());
+    if (!saved) return;
+    if (checkIn) await q(sb.from('attendance').upsert({ member_id: saved.id, date: T.todayIso, svc: ciService(), by_coord: myPerson() }, { onConflict: 'member_id,date,svc', ignoreDuplicates: true }));
+    ui.ciQuery = ''; reload(); toast(id ? `Saved ${name}.` : `Welcome, ${name}!${checkIn ? ' Checked in.' : ''}`);
+  },
+  async delMember(el) { if (!tapTwice(el, 'Tap again: attendance goes too')) return; closeModal(); if (await q(sb.from('members').delete().eq('id', el.dataset.id))) reload(); },
+
+  /* events */
+  evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
+  evDay(el) { ui.evDay = el.dataset.date || null; render(); },
+  editEvent(el) { if (!me.admin) return; modal(eventForm(el.dataset.id, el.dataset.date)); },
+  async saveCalEvent(el) {
+    const title = val('eTitle').trim(); const date = val('eDate');
+    if (!title) { toast('Give the event a title.'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('Pick a date.'); return; }
+    const start = val('eStart'), end = val('eEnd');
+    if (start && end && end <= start) { toast('The end time has to be after the start.'); return; }
+    const row = { title, date, start_time: start || null, end_time: end || null, location: val('eLoc').trim() || null, description: val('eDesc').trim() || null };
+    const id = el.dataset.id; closeModal();
+    const r = id ? await q(sb.from('events').update(row).eq('id', id)) : await q(sb.from('events').insert({ ...row, created_by: myPerson() }));
+    if (r) { ui.evMonth = date.slice(0, 7); ui.evDay = date; reload(); toast(id ? 'Event saved.' : `Added ${title}.`); }
+  },
+  async delCalEvent(el) { if (!tapTwice(el, 'Tap again to delete')) return; closeModal(); if (await q(sb.from('events').delete().eq('id', el.dataset.id))) reload(); },
+
   /* teams & positions */
   editTeam(el) {
     const id = el.dataset.id; const t = id ? S.teams[id] : { name: '' };
@@ -294,5 +352,5 @@ export const H = {
 
 /* Actions fired by `change` or `input` instead of `click`. */
 export const CHANGE = new Set(['assign', 'useTpl', 'tLang']);
-export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText']);
+export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch']);
 export { TABS, ic };

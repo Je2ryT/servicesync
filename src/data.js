@@ -21,10 +21,11 @@ export async function q(p) {
   return data ?? true;
 }
 
-const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers'];
+const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events'];
 
 export async function loadAll() {
-  const res = await Promise.all(TABLES.map(n => sb.from(n).select('*')));
+  const since = new Date(); since.setDate(since.getDate() - 180);   // attendance: the last six months is plenty for the screens
+  const res = await Promise.all(TABLES.map(n => (n === 'attendance' ? sb.from(n).select('*').gte('date', since.toISOString().slice(0, 10)) : sb.from(n).select('*'))));
   const by = Object.fromEntries(TABLES.map((n, i) => [n, res[i]]));
   if (['teams', 'positions', 'person_positions', 'assignments'].some(n => by[n].error && /does not exist|schema cache|42P01|PGRST205/i.test(by[n].error.code + ' ' + by[n].error.message))) {
     ui.needsMigration = true; ui.ready = true; onLoaded(); return;
@@ -45,8 +46,12 @@ export async function loadAll() {
   const quals = {}; rows('person_positions').forEach(r => { (quals[r.person_id] || (quals[r.person_id] = {}))[r.position_id] = true; });
   const timers = {}; ui.timerMissing = !!by.service_timers.error;   // migration 002 not run yet: everything else still works
   rows('service_timers').forEach(r => { timers[timerKey(r.sunday_id, r.svc)] = timerRow(r); });
+  ui.membersMissing = !!(by.members.error || by.attendance.error || by.events.error);   // migration 003 not run yet
+  const members = {}; rows('members').forEach(r => { members[r.id] = { name: r.name, phone: r.phone || '', email: r.email || '', lang: r.lang, status: r.status, household: r.household || '', notes: r.notes || '', active: r.active !== false, createdAt: Date.parse(r.created_at) }; });
+  const att = {}; rows('attendance').forEach(r => { att[r.member_id + '|' + r.date + '|' + r.svc] = { member: r.member_id, date: r.date, svc: r.svc, at: Date.parse(r.at), by: r.by_coord }; });
+  const events = {}; rows('events').forEach(r => { events[r.id] = { title: r.title, date: r.date, start: r.start_time || '', end: r.end_time || '', location: r.location || '', description: r.description || '' }; });
   const asg = {}; rows('assignments').forEach(r => { asg[r.id] = { sunId: r.sunday_id, svc: r.svc, pos: r.position_id, person: r.person_id, status: r.status }; });
-  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers });
+  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events });
   ui.needsMigration = false;
   if (ui.chkDraft && !ui.chkDraft.dirty) ui.chkDraft = null;
   ui.ready = true; onLoaded();

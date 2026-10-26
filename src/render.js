@@ -10,9 +10,11 @@ import { vPeople } from './views/people.js';
 import { vSwaps } from './views/swaps.js';
 import { vTemplates } from './views/templates.js';
 import { vStage } from './views/timer.js';
+import { vCheckin } from './views/checkin.js';
+import { vEvents } from './views/events.js';
 import { vLanding, vSignin, vNotMember, vNeedsMigration } from './views/auth.js';
 
-export const VIEWS = { home: vHome, calendar: vCalendar, live: vLive, roster: vPeople, swaps: vSwaps, templates: vTemplates };
+export const VIEWS = { home: vHome, checkin: vCheckin, events: vEvents, calendar: vCalendar, live: vLive, roster: vPeople, swaps: vSwaps, templates: vTemplates };
 
 let pending = false;
 export function render() {

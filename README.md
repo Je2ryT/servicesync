@@ -21,6 +21,16 @@ Then open **People → Teams & positions** to add teams such as Worship, Sound o
 
 Until step 2 is live, the old app keeps working, but anything changed in it after step 1 won't carry over. If the new app shows **Database update needed**, step 1 hasn't been run yet.
 
+## Dashboard, check-in and events
+
+- **Home** opens with the profile of whoever is signed in (next time serving, positions, contact), notifications (confirmations to answer, swap requests, coverage issues, newcomers, events this week), today's check-in numbers and upcoming events. Admins also see the planning overview below.
+- **Check-in**: pick the service (it picks English before 11:15 on Sundays, French after), search by name or phone, tap a name when someone arrives. Tap twice to undo. **New person** adds a newcomer and checks them in at once. Anyone on the roster can check people in; only admins edit or remove members.
+- **Events**: the church calendar by month, with Sundays marked. Admins add, edit and delete events.
+- After signing in, the Mont Carmel logo plays a short intro (once per browser tab; tap to skip).
+- The serving-team calendar tab is now called **Schedule**.
+
+**Updating an existing install:** run `migrations/003-members-attendance-events.sql` in Supabase. Until then, Check-in and Events ask for the update and everything else keeps working.
+
 ## Live service timer
 
 On **Live**, each service has a **Service timer** card. Press **Start service** and it counts down each segment of the order of service (from **Templates**), in sync on every screen.

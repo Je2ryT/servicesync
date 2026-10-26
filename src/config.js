@@ -13,7 +13,7 @@ export const SVC = {
 
 export const PHASES = [['before', 'Before Service'], ['during', 'During Service'], ['after', 'After Service']];
 
-export const TABS = [['home', 'Home'], ['calendar', 'Calendar'], ['live', 'Live'], ['roster', 'People'], ['swaps', 'Swaps'], ['templates', 'Templates']];
+export const TABS = [['home', 'Home'], ['checkin', 'Check-in'], ['events', 'Events'], ['calendar', 'Schedule'], ['live', 'Live'], ['roster', 'People'], ['swaps', 'Swaps'], ['templates', 'Templates']];
 
 export const DEFAULT_TPL = {
   'tpl-en': { name: 'English Sunday Service', lang: 'en', order: [
