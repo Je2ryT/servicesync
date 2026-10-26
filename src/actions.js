@@ -15,6 +15,8 @@ import { canRun } from './views/timer.js';
 import { memberForm, ciListHtml, ciService } from './views/checkin.js';
 import { eventForm } from './views/events.js';
 import { attKey } from './members.js';
+import { importView, importPlan } from './views/import.js';
+import { parseCsv, detectColumns } from './importer.js';
 import { timeRange } from './views/shared.js';
 
 /* ---------- helpers ---------- */
@@ -243,6 +245,33 @@ export const H = {
   },
   async delMember(el) { if (!tapTwice(el, 'Tap again: attendance goes too')) return; closeModal(); if (await q(sb.from('members').delete().eq('id', el.dataset.id))) reload(); },
 
+  /* import from Elvanto */
+  impOpen() { if (!me.admin) return; ui.imp = null; modal(importView()); },
+  impReset() { ui.imp = null; modal(importView()); },
+  async impFile(el) {
+    const f = el.files?.[0]; if (!f) return;
+    if (/\.(xlsx?|numbers)$/i.test(f.name)) { ui.imp = { error: 'That is an Excel file. In Elvanto, export again and choose CSV.' }; modal(importView()); return; }
+    if (f.size > 10 * 1024 * 1024) { ui.imp = { error: 'That file is larger than 10 MB. Export fewer people at a time.' }; modal(importView()); return; }
+    const rows = parseCsv(await f.text());
+    if (rows.length < 2) { ui.imp = { error: 'No people found in that file. Check it is the CSV from People → Export.' }; modal(importView()); return; }
+    const headers = rows[0];
+    ui.imp = { fileName: f.name, headers, rows: rows.slice(1), map: detectColumns(headers), lang: 'fr', status: 'member' };
+    modal(importView());
+  },
+  impMap(el) { if (el.value === '') delete ui.imp.map[el.dataset.k]; else ui.imp.map[el.dataset.k] = +el.value; modal(importView()); },
+  impOpt(el) { ui.imp[el.dataset.k] = el.value; modal(importView()); },
+  async impRun(el) {
+    const { add } = importPlan(); if (!add.length) return;
+    el.disabled = true; const by = myPerson(); let done = 0;
+    for (let i = 0; i < add.length; i += 200) {
+      el.textContent = `Importing… ${done} of ${add.length}`;
+      const ok = await q(sb.from('members').insert(add.slice(i, i + 200).map(m => ({ ...m, created_by: by }))));
+      if (!ok) { el.disabled = false; el.textContent = 'Try again'; toast(done ? `Imported ${done} before an error. Try again to add the rest.` : 'Nothing was imported.'); reload(); return; }
+      done += Math.min(200, add.length - i);
+    }
+    ui.imp = null; closeModal(); reload(); toast(`Imported ${done} ${done === 1 ? 'person' : 'people'} from Elvanto.`);
+  },
+
   /* events */
   evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
   evDay(el) { ui.evDay = el.dataset.date || null; render(); },
@@ -351,6 +380,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt']);
 export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch']);
 export { TABS, ic };
