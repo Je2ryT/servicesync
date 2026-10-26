@@ -27,7 +27,7 @@ function vRoster(seg) {
 
 function vTeams(seg) {
   const teams = teamsList(); const pos = allPositions(); const ppl = people();
-  let h = `<div class="head"><div><h1>Teams &amp; positions</h1><p class="sub">Each position is filled for every service. Minimum is what a service can't run without; preferred is the goal.</p></div>${me.admin ? `<button class="btn cta" data-act="editTeam">${ic('plus')} New team</button>` : ''}</div>${seg}`;
+  let h = `<div class="head"><div><h1>Teams &amp; positions</h1><p class="sub">Each position is filled for every service. Minimum is what a service can't run without; preferred is the goal.</p></div>${me.admin ? `<div class="row"><button class="btn" data-act="editPerson">${ic('plus')} Add person</button><button class="btn cta" data-act="editTeam">${ic('plus')} New team</button></div>` : ''}</div>${seg}`;
   if (!teams.length) return h + `<div class="card empty">${me.admin ? 'No teams yet. Create one, for example Worship, Sound or Ushers.' : 'No teams set up yet.'}</div>`;
   h += '<div class="grid2">' + teams.map(t => {
     const list = pos.filter(p => p.team === t.id);

@@ -3,15 +3,25 @@ import { esc } from '../util.js';
 import { ic } from '../icons.js';
 
 export function vLanding() {
-  const f = [['cal', 'Monthly planning', 'Fill every team and position for the English (9:00) and French (11:30) services, with live coverage checks.'],
-    ['swap', 'Confirm &amp; swap', 'Volunteers confirm, mark Sundays off and request swaps from their phone.'],
-    ['live', 'Live Sunday', 'Follow the order of service and checklists in real time, together.'],
-    ['shield', 'Secure roles', 'Admins plan and publish. Everyone else sees only what is published.']];
-  return `<section class="land"><div class="land-copy"><div class="eyebrow" style="color:var(--accent)">Mont Carmel · Service coordination</div><h1 class="big">Every Sunday, covered and calm.</h1>
-    <p class="sub" style="font-size:1.02rem;max-width:46ch">ServiceSync helps the whole serving team plan both services, share the schedule by text, and run each Sunday on time.</p>
-    <div><button class="btn cta lg" data-act="goSignin">Open ServiceSync</button></div></div>
-    <div class="land-art" aria-hidden="true"><img class="mc xl" src="/mc-logo.png" alt=""><div class="land-svc"><b>English Service</b><span>9:00 – 10:45 AM</span></div><div class="land-svc"><b>Culte en français</b><span>11:30 AM – 1:45 PM</span></div></div></section>
-    <div class="stats">${f.map(([i, t, d]) => `<div class="card stat feat">${ic(i)}<h3>${t}</h3><span>${d}</span></div>`).join('')}</div>`;
+  const f = [['checkc', 'Check-in', 'Welcome everyone at the door and know who came, in English and in French.'],
+    ['cal', 'Church calendar', 'Services, prayer nights, youth and conferences in one place.'],
+    ['users', 'Serving teams', 'Coordinators, worship, sound and ushers planned for every Sunday.'],
+    ['live', 'Live Sunday', 'A shared order of service and a stage timer so every service runs on time.']];
+  return `<section class="land-hero" aria-labelledby="landTitle">
+      <div class="land-pano" aria-hidden="true"><div class="intro-glow"></div><img src="/mc-logo.png" alt=""><div class="intro-sweep"></div></div>
+      <div class="land-hero-copy">
+        <p class="eyebrow">Église Mont Carmel · Mont Carmel Church</p>
+        <h1 class="big" id="landTitle">Bienvenue à la maison.<br><span>Welcome home.</span></h1>
+        <p class="lead">One church, two languages. Join us every Sunday for worship in English and in French.</p>
+        <div class="row"><button class="btn cta lg" data-act="goSignin">Sign in</button><span class="hint">For members of the serving team</span></div>
+      </div>
+    </section>
+    <section class="land-svcs" aria-label="Sunday services">
+      <div class="card land-svc2"><span class="eyebrow">Every Sunday</span><h3>English Service</h3><b>9:00 – 10:45 AM</b></div>
+      <div class="card land-svc2"><span class="eyebrow">Chaque dimanche</span><h3>Culte en français</h3><b>11 h 30 – 13 h 45</b></div>
+    </section>
+    <section><h2 class="land-h2">ServiceSync, for the Mont Carmel family</h2>
+      <div class="stats">${f.map(([i, t, d]) => `<div class="card stat feat">${ic(i)}<h3>${t}</h3><span>${d}</span></div>`).join('')}</div></section>`;
 }
 
 export function vSignin() {

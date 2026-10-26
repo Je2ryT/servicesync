@@ -8,10 +8,13 @@ import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
   docs, docOf, visible, monthRows, monthState, svcKeys, svcName, newSun, templates, cfg, isOff, myPerson, pname, posName,
-  asgOf, planAutofill, candidates, allPositions, teamsList, qualified, positionsList, tplFor,
+  asgOf, planAutofill, candidates, allPositions, teamsList, qualified, positionsList, tplFor, people,
 } from './domain.js';
 import { timerOf } from './timer.js';
 import { canRun } from './views/timer.js';
+import { memberForm, ciListHtml, ciService } from './views/checkin.js';
+import { eventForm } from './views/events.js';
+import { attKey } from './members.js';
 import { timeRange } from './views/shared.js';
 
 /* ---------- helpers ---------- */
@@ -56,6 +59,12 @@ async function autofill(m) {
 }
 const val = id => document.getElementById(id)?.value ?? '';
 const tapTwice = (el, label) => { if (el.dataset.sure === '1') return true; el.dataset.sure = '1'; el.textContent = label; return false; };
+
+/** Redraw the check-in list and counts without disturbing the search box. */
+function refreshCheckin() {
+  const l = document.getElementById('ciList');
+  if (l && document.activeElement?.id === 'ciQ') l.innerHTML = ciListHtml(); else render();
+}
 
 /* ---------- live timer ---------- */
 const lastTap = { k: '', t: 0 };
@@ -202,6 +211,55 @@ export const H = {
     if (r) reload();
   },
 
+  /* check-in */
+  ciSvc(el) { ui.ciSvc = el.dataset.svc; render(); },
+  ciSearch(el) { ui.ciQuery = el.value; const l = document.getElementById('ciList'); if (l) l.innerHTML = ciListHtml(); },
+  async ciToggle(el) {
+    const id = el.dataset.id; const svc = ciService(); const date = T.todayIso; const k = attKey(id, date, svc);
+    if (S.att[k]) {
+      if (el.dataset.sure !== '1') { el.dataset.sure = '1'; el.querySelector('small').textContent = 'Tap again to undo check-in'; return; }
+      delete S.att[k]; refreshCheckin();
+      if (await q(sb.from('attendance').delete().eq('member_id', id).eq('date', date).eq('svc', svc))) reload();
+      return;
+    }
+    S.att[k] = { member: id, date, svc, at: Date.now(), by: myPerson() }; refreshCheckin();
+    if (await q(sb.from('attendance').upsert({ member_id: id, date, svc, by_coord: myPerson() }, { onConflict: 'member_id,date,svc', ignoreDuplicates: true }))) reload();
+    else { delete S.att[k]; refreshCheckin(); }
+  },
+  addMember(el) { modal(memberForm(null, el.dataset.name || '')); },
+  editMember(el) { modal(memberForm(el.dataset.id)); },
+  async saveMember(el) {
+    const name = val('mName').trim().replace(/\s+/g, ' '); if (!name) { toast('Enter a name.'); return; }
+    const id = el.dataset.id; const checkIn = !id && !!document.getElementById('mIn')?.checked;
+    const row = { name, phone: val('mPhone').trim() || null, email: val('mEmail').trim().toLowerCase() || null, lang: val('mLang') || 'fr', status: val('mStatus') || 'newcomer', household: val('mHouse').trim() || null };
+    if (me.admin && document.getElementById('mNotes')) row.notes = val('mNotes').trim() || null;
+    closeModal();
+    let saved;
+    if (id) saved = await q(sb.from('members').update(row).eq('id', id).select('id').single());
+    else saved = await q(sb.from('members').insert({ ...row, created_by: myPerson() }).select('id').single());
+    if (!saved) return;
+    if (checkIn) await q(sb.from('attendance').upsert({ member_id: saved.id, date: T.todayIso, svc: ciService(), by_coord: myPerson() }, { onConflict: 'member_id,date,svc', ignoreDuplicates: true }));
+    ui.ciQuery = ''; reload(); toast(id ? `Saved ${name}.` : `Welcome, ${name}!${checkIn ? ' Checked in.' : ''}`);
+  },
+  async delMember(el) { if (!tapTwice(el, 'Tap again: attendance goes too')) return; closeModal(); if (await q(sb.from('members').delete().eq('id', el.dataset.id))) reload(); },
+
+  /* events */
+  evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
+  evDay(el) { ui.evDay = el.dataset.date || null; render(); },
+  editEvent(el) { if (!me.admin) return; modal(eventForm(el.dataset.id, el.dataset.date)); },
+  async saveCalEvent(el) {
+    const title = val('eTitle').trim(); const date = val('eDate');
+    if (!title) { toast('Give the event a title.'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('Pick a date.'); return; }
+    const start = val('eStart'), end = val('eEnd');
+    if (start && end && end <= start) { toast('The end time has to be after the start.'); return; }
+    const row = { title, date, start_time: start || null, end_time: end || null, location: val('eLoc').trim() || null, description: val('eDesc').trim() || null };
+    const id = el.dataset.id; closeModal();
+    const r = id ? await q(sb.from('events').update(row).eq('id', id)) : await q(sb.from('events').insert({ ...row, created_by: myPerson() }));
+    if (r) { ui.evMonth = date.slice(0, 7); ui.evDay = date; reload(); toast(id ? 'Event saved.' : `Added ${title}.`); }
+  },
+  async delCalEvent(el) { if (!tapTwice(el, 'Tap again to delete')) return; closeModal(); if (await q(sb.from('events').delete().eq('id', el.dataset.id))) reload(); },
+
   /* teams & positions */
   editTeam(el) {
     const id = el.dataset.id; const t = id ? S.teams[id] : { name: '' };
@@ -224,16 +282,26 @@ export const H = {
       <label class="f">Team<select id="psTeam">${teamsList().map(t => `<option value="${esc(t.id)}" ${t.id === p.team ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
       <div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f">Minimum per service<input type="number" id="psMin" min="0" max="20" value="${esc(p.min)}"></label><label class="f">Preferred per service<input type="number" id="psPref" min="1" max="20" value="${esc(p.pref)}"></label></div>
       <div class="checks"><label><input type="checkbox" id="psAct" ${p.active !== false ? 'checked' : ''}> Schedule this position (uncheck to pause it)</label></div>
+      <div class="f" style="font-size:.85rem;font-weight:600;display:grid;gap:8px">Who can serve${people().length ? `<div class="checks">${people().map(x => `<label><input type="checkbox" class="psWho" value="${esc(x.id)}" ${id && qualified(x.id, id) ? 'checked' : ''}> ${esc(x.name)}</label>`).join('')}</div>` : '<span class="sub" style="margin:0;font-weight:400">Add people first, then tick them here.</span>'}</div>
       <div class="row" style="justify-content:space-between"><div class="row"><button class="btn cta" data-act="savePosition" data-id="${esc(id || '')}">Save</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>${id ? `<button class="btn danger" data-act="delPosition" data-id="${esc(id)}">Delete</button>` : ''}</div>`);
   },
   async savePosition(el) {
     const name = val('psName').trim(); const min = Math.max(0, Math.round(+val('psMin') || 0)); const pref = Math.max(1, Math.round(+val('psPref') || 1));
     if (!name) { toast('Give the position a name.'); return; }
     if (pref < min) { toast('Preferred has to be at least the minimum.'); return; }
-    const id = el.dataset.id; const team = val('psTeam'); closeModal();
-    const row = { name, team_id: team, min_needed: min, preferred: pref, active: document.getElementById('psAct').checked };
+    // Read everything from the form before closing it.
+    const id = el.dataset.id; const team = val('psTeam'); const active = !!document.getElementById('psAct')?.checked;
+    const who = [...document.querySelectorAll('.psWho:checked')].map(x => x.value);
+    closeModal();
+    const row = { name, team_id: team, min_needed: min, preferred: pref, active };
     if (id) { row.id = id; row.sort = S.pos[id].sort || 0; } else row.sort = Math.max(0, ...allPositions().filter(p => p.team === team).map(p => p.sort || 0)) + 1;
-    if (await q(sb.from('positions').upsert(row))) { reload(); if (!id) toast(`Added ${name}. Now tick it on each person who can serve it.`); }
+    const saved = await q(sb.from('positions').upsert(row).select('id').single()); if (!saved) return;
+    const pid = saved.id || id;
+    const drop = people().filter(x => qualified(x.id, pid) && !who.includes(x.id)).map(x => x.id);
+    if (drop.length) await q(sb.from('person_positions').delete().eq('position_id', pid).in('person_id', drop));
+    const add = who.filter(x => !qualified(x, pid));
+    if (add.length) await q(sb.from('person_positions').upsert(add.map(x => ({ person_id: x, position_id: pid })), { onConflict: 'person_id,position_id', ignoreDuplicates: true }));
+    reload(); if (!id) toast(who.length ? `Added ${name}.` : `Added ${name}. Tick who can serve it, here or on each person.`);
   },
   async delPosition(el) {
     if (!tapTwice(el, 'Tap again: its assignments go too')) return;
@@ -284,5 +352,5 @@ export const H = {
 
 /* Actions fired by `change` or `input` instead of `click`. */
 export const CHANGE = new Set(['assign', 'useTpl', 'tLang']);
-export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText']);
+export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch']);
 export { TABS, ic };

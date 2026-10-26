@@ -6,6 +6,8 @@ import { render, renderPending } from './render.js';
 import { H, CHANGE, INPUT, stageKey } from './actions.js';
 import { tickTimers } from './views/timer.js';
 import { closeModal } from './ui.js';
+import { showIntro, introName } from './intro.js';
+import { profile } from './members.js';
 
 whenLoaded(render);
 
@@ -45,8 +47,10 @@ async function start(session) {
   if (started) return; started = true;
   me.email = session.user.email || '';
   me.name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
+  if (!ui.stage) { showIntro(); introName(me.name); }   // the Mont Carmel logo while the church's data loads
   const { data } = await sb.rpc('is_admin'); me.admin = !!data;
   await Promise.all([loadAll(), syncClock()]);
+  introName(profile().name);
   subscribe();
   clockTimer = clockTimer || setInterval(syncClock, 10 * 60 * 1000);
 }
