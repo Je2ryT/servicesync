@@ -22,7 +22,7 @@ export function vLive() {
   const cur = tv?.phase === 'ended' ? -1 : timed ? ord.findIndex(o => o.id === tv.cur?.id) : ord.findIndex(o => !done[o.id]); const c = cov(doc, s);
   const actual = {}; (tv?.log || []).forEach(e => { actual[e.id] = e; });
   let h = `<div class="head"><div><h1>Live Sunday</h1><p class="sub">${esc(fmt(doc.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }))}${doc.special ? ' · ' + esc(doc.title || '') : ''}</p></div>
-   <div class="row"><button class="btn sq" data-act="liveNav" data-k="-1" ${ui.liveIdx <= 0 ? 'disabled' : ''} aria-label="Previous">${ic('left')}</button><button class="btn sq" data-act="liveNav" data-k="1" ${ui.liveIdx >= list.length - 1 ? 'disabled' : ''} aria-label="Next">${ic('right')}</button></div></div>
+   <div class="row"><button class="btn" data-act="openReport" data-id="${esc(doc.id)}" data-svc="${s}">${ic('pencil')} Report &amp; notes</button><button class="btn sq" data-act="liveNav" data-k="-1" ${ui.liveIdx <= 0 ? 'disabled' : ''} aria-label="Previous">${ic('left')}</button><button class="btn sq" data-act="liveNav" data-k="1" ${ui.liveIdx >= list.length - 1 ? 'disabled' : ''} aria-label="Next">${ic('right')}</button></div></div>
    <div class="stabs">${keys.map(k => `<button data-act="liveSvc" data-svc="${k}" aria-pressed="${k === s}">${esc(svcName(doc, k))}<small>${esc(timeRange(doc, k))}</small></button>`).join('')}</div>
    <section class="hero prog"><div class="row" style="justify-content:space-between"><span class="eyebrow">Overall progress</span><span class="pill ${c.cls}">${esc(c.label)}</span></div><b>${pct}%</b><div class="ptrack"><i style="width:${pct}%"></i></div>
    <div class="hp">${teamLine(doc.id, s)}</div></section>

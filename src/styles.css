@@ -420,3 +420,63 @@ main.stage-wrap{padding:0;max-width:none;display:block}
 .imp-prev tr:last-child td{border-bottom:0}
 .imp-prev th{color:var(--muted);font-weight:500;font-size:.75rem}
 .imp-prev small{display:block;color:var(--muted)}
+
+/* ---------- service reports ---------- */
+.rep-head .btn.link{padding-left:0;margin-bottom:4px}
+.rep-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:700px){.rep-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.rep-stats>div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:2px;box-shadow:var(--shadow)}
+.rep-stats span{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.rep-stats b{font-family:var(--f-display);color:var(--brand);font-size:1.6rem;line-height:1.1}
+.rep-stats small{display:block;font-family:var(--f-ui);font-size:.8rem;color:var(--muted);font-weight:400}
+.rep-segs{display:grid}
+.rep-seg{padding:14px 20px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.rep-seg:last-child{border-bottom:0}
+.rep-seg.has{background:linear-gradient(90deg,var(--navsel),transparent 40%)}
+.rep-seg-h{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:10px;align-items:baseline}
+.rep-seg-h .tm{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums}
+.rep-seg-h b{overflow-wrap:anywhere}
+.rep-time{color:var(--muted);font-size:.82rem;white-space:nowrap}
+.rep-time .over{color:var(--bad);font-weight:600}
+@media (max-width:560px){.rep-seg-h{grid-template-columns:62px minmax(0,1fr)}.rep-time{grid-column:2}}
+.rep-note{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--surface);resize:vertical;min-height:44px;line-height:1.45}
+.rep-note:focus{border-color:var(--brand);outline:none;box-shadow:0 0 0 3px var(--navsel)}
+.rep-seg .rep-note{margin-left:86px;width:calc(100% - 86px)}
+@media (max-width:560px){.rep-seg .rep-note{margin-left:0;width:100%}}
+.rep-meta{display:flex;justify-content:flex-end;min-height:0}
+.rep-st{font-size:.75rem;color:var(--muted)}
+.rep-st.saved{color:var(--ok)}.rep-st.error{color:var(--bad);font-weight:600}
+.rep-by{font-size:.75rem;color:var(--muted);margin-left:86px}
+@media (max-width:560px){.rep-by{margin-left:0}}
+.rep-box{padding:14px 20px 16px;display:grid;gap:6px}
+.rep-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.rep-seg .rep-text{margin-left:86px}
+.empty-note{color:var(--muted);font-size:.9rem}
+.print-only{display:none}
+.rep-team{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:4px 20px;padding:14px 20px 18px}
+.rep-team div{display:grid;gap:1px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.rep-team span{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.rep-team small{color:var(--bad)}
+.rep-names{margin:0;padding:14px 20px 18px;font-size:.92rem;line-height:1.7}
+.rep-list{padding:6px 0}
+.rep-day{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);align-items:center}
+.rep-day:last-child{border-bottom:0}
+@media (max-width:640px){.rep-day{grid-template-columns:minmax(0,1fr)}}
+.rep-date b{display:block;font-family:var(--f-display);color:var(--brand);font-size:1.15rem}
+.rep-date span{font-size:.82rem;color:var(--muted)}
+.rep-svcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:8px}
+.rep-item{display:grid;grid-template-columns:minmax(0,1fr) 16px;grid-template-rows:auto auto;gap:6px 8px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 14px;align-items:center}
+.rep-item:hover{border-color:var(--brand)}
+.rep-item>span{display:flex;gap:6px;flex-wrap:wrap;grid-column:1}
+.rep-item>svg.i{grid-row:1/3;grid-column:2;color:var(--muted);width:16px;height:16px}
+
+@media print{
+  header.top,#overlay,.noprint,.toast,nav.tabs,#intro{display:none!important}
+  body{background:#fff;font-size:12px}
+  main.wrap{padding:0;max-width:none}
+  .card,.rep-stats>div{box-shadow:none;break-inside:avoid}
+  .rep-note,.rep-meta{display:none!important}
+  .print-only{display:block}
+  .rep-seg.has{background:none}
+  .rep-seg{break-inside:avoid}
+}

@@ -3,7 +3,7 @@ import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
 import { ic } from './icons.js';
-import { sb, q, reload, saveSun, ensureSun, timerAction } from './data.js';
+import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport } from './data.js';
 import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
@@ -94,7 +94,7 @@ export function stageKey(e) {
 
 /* ---------- handlers ---------- */
 export const H = {
-  tab(el) { ui.tab = el.dataset.tab; try { localStorage.setItem('ss-tab', ui.tab); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
+  tab(el) { if (el.dataset.tab === 'reports') ui.rep = null; ui.tab = el.dataset.tab; try { localStorage.setItem('ss-tab', ui.tab); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
   openLive(el) { const list = docs().filter(visible); const i = list.findIndex(d => d.id === el.dataset.id); if (i < 0) { toast('This Sunday is not planned yet.'); return; } ui.liveIdx = i; ui.liveSvc = el.dataset.svc; ui.tab = 'live'; render(); window.scrollTo(0, 0); },
   liveNav(el) { ui.liveIdx += +el.dataset.k; render(); },
   liveSvc(el) { ui.liveSvc = el.dataset.svc; render(); },
@@ -272,6 +272,19 @@ export const H = {
     ui.imp = null; closeModal(); reload(); toast(`Imported ${done} ${done === 1 ? 'person' : 'people'} from Elvanto.`);
   },
 
+  /* service reports */
+  openReport(el) { ui.rep = el.dataset.id + '|' + el.dataset.svc; ui.tab = 'reports'; render(); window.scrollTo(0, 0); },
+  repBack() { ui.rep = null; render(); window.scrollTo(0, 0); },
+  repPrint() { window.print(); },
+  async repNote(el) {
+    const { sun, svc, key, item } = el.dataset; const k = sun + '|' + svc + '|' + key;
+    const st = el.parentElement.querySelector('.rep-st'); const show = (v, t) => { ui.repSave[k] = v; if (st) { st.className = 'rep-st ' + v; st.textContent = t; } };
+    show('saving', 'Saving…');
+    const ok = await saveReport(sun, svc, key, item, el.value);
+    show(ok ? 'saved' : 'error', ok ? 'Saved' : 'Not saved');
+    if (ok) reload();
+  },
+
   /* events */
   evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
   evDay(el) { ui.evDay = el.dataset.date || null; render(); },
@@ -380,6 +393,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote']);
 export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch']);
 export { TABS, ic };
