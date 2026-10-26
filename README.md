@@ -25,6 +25,7 @@ Until step 2 is live, the old app keeps working, but anything changed in it afte
 
 - **Home** opens with the profile of whoever is signed in (next time serving, positions, contact), notifications (confirmations to answer, swap requests, coverage issues, newcomers, events this week), today's check-in numbers and upcoming events. Admins also see the planning overview below.
 - **Check-in**: pick the service (it picks English before 11:15 on Sundays, French after), search by name or phone, tap a name when someone arrives. Tap twice to undo. **New person** adds a newcomer and checks them in at once. Anyone on the roster can check people in; only admins edit or remove members.
+- **Import from Elvanto** (Check-in, admins): in Elvanto open **People → Export → CSV**, then choose that file. ServiceSync matches the columns (name, email, mobile, family, category), shows a preview, and skips anyone already here (same email, phone or name). Nothing is saved until you press Import.
 - **Events**: the church calendar by month, with Sundays marked. Admins add, edit and delete events.
 - After signing in, the Mont Carmel logo plays a short intro (once per browser tab; tap to skip).
 - The serving-team calendar tab is now called **Schedule**.
