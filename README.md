@@ -32,6 +32,19 @@ Until step 2 is live, the old app keeps working, but anything changed in it afte
 
 **Updating an existing install:** run `migrations/003-members-attendance-events.sql` in Supabase. Until then, Check-in and Events ask for the update and everything else keeps working.
 
+## Service reports
+
+**Reports** has a report for every service (English, French and special events), newest first, showing how many notes, how many people were present and how long it ran. Each report has:
+
+- the order of service with a **notes box for every segment** (Welcome, Worship, Sermon…), with planned and actual minutes from the live timer;
+- attendance and newcomers from Check-in, total length, and who served in each position;
+- **Summary** and **Follow-ups**;
+- **Print / PDF** for a clean copy.
+
+Notes save when you click out of the box ("Saved" appears). Two people can write notes on different segments at the same time without overwriting each other. Open a report from the list or from **Report & notes** on the Live screen. Admins can write any report; people on the roster can write reports for published Sundays.
+
+**Updating an existing install:** run `migrations/004-service-reports.sql` in Supabase.
+
 ## Live service timer
 
 On **Live**, each service has a **Service timer** card. Press **Start service** and it counts down each segment of the order of service (from **Templates**), in sync on every screen.

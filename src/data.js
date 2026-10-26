@@ -21,7 +21,7 @@ export async function q(p) {
   return data ?? true;
 }
 
-const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events'];
+const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events', 'service_reports'];
 
 export async function loadAll() {
   const since = new Date(); since.setDate(since.getDate() - 180);   // attendance: the last six months is plenty for the screens
@@ -50,8 +50,10 @@ export async function loadAll() {
   const members = {}; rows('members').forEach(r => { members[r.id] = { name: r.name, phone: r.phone || '', email: r.email || '', lang: r.lang, status: r.status, household: r.household || '', notes: r.notes || '', active: r.active !== false, createdAt: Date.parse(r.created_at) }; });
   const att = {}; rows('attendance').forEach(r => { att[r.member_id + '|' + r.date + '|' + r.svc] = { member: r.member_id, date: r.date, svc: r.svc, at: Date.parse(r.at), by: r.by_coord }; });
   const events = {}; rows('events').forEach(r => { events[r.id] = { title: r.title, date: r.date, start: r.start_time || '', end: r.end_time || '', location: r.location || '', description: r.description || '' }; });
+  ui.reportsMissing = !!by.service_reports.error;   // migration 004 not run yet
+  const reports = {}; rows('service_reports').forEach(r => { reports[r.sunday_id + '|' + r.svc] = reportRow(r); });
   const asg = {}; rows('assignments').forEach(r => { asg[r.id] = { sunId: r.sunday_id, svc: r.svc, pos: r.position_id, person: r.person_id, status: r.status }; });
-  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events });
+  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events, reports });
   ui.needsMigration = false;
   if (ui.chkDraft && !ui.chkDraft.dirty) ui.chkDraft = null;
   ui.ready = true; onLoaded();
@@ -84,4 +86,14 @@ export async function timerAction(sunId, svc, op, arg = {}) {
   const k = timerKey(sunId, svc);
   if (r && r !== true && r.sunday_id) S.timers[k] = timerRow(r); else delete S.timers[k];
   onLoaded(); reload(); return true;
+}
+
+/** A service_reports row as the app uses it. */
+export const reportRow = r => ({ notes: r.notes || {}, summary: r.summary || '', followups: r.followups || '', updatedAt: Date.parse(r.updated_at), by: r.updated_by });
+
+/** Save one part of a service report (a segment's note, the summary or follow-ups). */
+export async function saveReport(sunId, svc, key, item, text) {
+  const r = await q(sb.rpc('save_report', { p_sunday: sunId, p_svc: svc, p_key: key, p_item: item || null, p_text: text }));
+  if (r && r !== true && r.sunday_id) S.reports[sunId + '|' + svc] = reportRow(r);
+  return r !== null;
 }
