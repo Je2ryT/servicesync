@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { S, ui, setState } from './state.js';
 import { toast } from './ui.js';
+import { clock, timerRow, timerKey } from './timer.js';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -20,7 +21,7 @@ export async function q(p) {
   return data ?? true;
 }
 
-const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments'];
+const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers'];
 
 export async function loadAll() {
   const res = await Promise.all(TABLES.map(n => sb.from(n).select('*')));
@@ -42,8 +43,10 @@ export async function loadAll() {
   const teams = {}; rows('teams').forEach(r => { teams[r.id] = { name: r.name, sort: r.sort }; });
   const pos = {}; rows('positions').forEach(r => { pos[r.id] = { team: r.team_id, name: r.name, min: r.min_needed, pref: r.preferred, sort: r.sort, active: r.active }; });
   const quals = {}; rows('person_positions').forEach(r => { (quals[r.person_id] || (quals[r.person_id] = {}))[r.position_id] = true; });
+  const timers = {}; ui.timerMissing = !!by.service_timers.error;   // migration 002 not run yet: everything else still works
+  rows('service_timers').forEach(r => { timers[timerKey(r.sunday_id, r.svc)] = timerRow(r); });
   const asg = {}; rows('assignments').forEach(r => { asg[r.id] = { sunId: r.sunday_id, svc: r.svc, pos: r.position_id, person: r.person_id, status: r.status }; });
-  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg });
+  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers });
   ui.needsMigration = false;
   if (ui.chkDraft && !ui.chkDraft.dirty) ui.chkDraft = null;
   ui.ready = true; onLoaded();
@@ -61,4 +64,19 @@ export function subscribe() {
   if (subscribed) return; subscribed = true;   // signing out and back in must not add a second listener
   sb.channel('servicesync').on('postgres_changes', { event: '*', schema: 'public' }, reload).subscribe();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) reload(); });
+}
+
+/** Measure how far this device's clock is from the server's, so every screen shows the same countdown. */
+export async function syncClock() {
+  const t0 = Date.now(); const { data, error } = await sb.rpc('timer_now'); const t1 = Date.now();
+  if (!error && data) clock.offset = Number(data) - (t0 + t1) / 2;
+}
+
+/** Press a timer button. Applies the server's answer right away instead of waiting for the live update. */
+export async function timerAction(sunId, svc, op, arg = {}) {
+  const r = await q(sb.rpc('timer_control', { p_sunday: sunId, p_svc: svc, p_action: op, p_arg: arg }));
+  if (r === null) return false;
+  const k = timerKey(sunId, svc);
+  if (r && r !== true && r.sunday_id) S.timers[k] = timerRow(r); else delete S.timers[k];
+  onLoaded(); reload(); return true;
 }
