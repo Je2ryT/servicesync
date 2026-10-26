@@ -8,7 +8,7 @@ import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
   docs, docOf, visible, monthRows, monthState, svcKeys, svcName, newSun, templates, cfg, isOff, myPerson, pname, posName,
-  asgOf, planAutofill, candidates, allPositions, teamsList, qualified, positionsList, tplFor,
+  asgOf, planAutofill, candidates, allPositions, teamsList, qualified, positionsList, tplFor, people,
 } from './domain.js';
 import { timerOf } from './timer.js';
 import { canRun } from './views/timer.js';
@@ -224,16 +224,26 @@ export const H = {
       <label class="f">Team<select id="psTeam">${teamsList().map(t => `<option value="${esc(t.id)}" ${t.id === p.team ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
       <div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f">Minimum per service<input type="number" id="psMin" min="0" max="20" value="${esc(p.min)}"></label><label class="f">Preferred per service<input type="number" id="psPref" min="1" max="20" value="${esc(p.pref)}"></label></div>
       <div class="checks"><label><input type="checkbox" id="psAct" ${p.active !== false ? 'checked' : ''}> Schedule this position (uncheck to pause it)</label></div>
+      <div class="f" style="font-size:.85rem;font-weight:600;display:grid;gap:8px">Who can serve${people().length ? `<div class="checks">${people().map(x => `<label><input type="checkbox" class="psWho" value="${esc(x.id)}" ${id && qualified(x.id, id) ? 'checked' : ''}> ${esc(x.name)}</label>`).join('')}</div>` : '<span class="sub" style="margin:0;font-weight:400">Add people first, then tick them here.</span>'}</div>
       <div class="row" style="justify-content:space-between"><div class="row"><button class="btn cta" data-act="savePosition" data-id="${esc(id || '')}">Save</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>${id ? `<button class="btn danger" data-act="delPosition" data-id="${esc(id)}">Delete</button>` : ''}</div>`);
   },
   async savePosition(el) {
     const name = val('psName').trim(); const min = Math.max(0, Math.round(+val('psMin') || 0)); const pref = Math.max(1, Math.round(+val('psPref') || 1));
     if (!name) { toast('Give the position a name.'); return; }
     if (pref < min) { toast('Preferred has to be at least the minimum.'); return; }
-    const id = el.dataset.id; const team = val('psTeam'); closeModal();
-    const row = { name, team_id: team, min_needed: min, preferred: pref, active: document.getElementById('psAct').checked };
+    // Read everything from the form before closing it.
+    const id = el.dataset.id; const team = val('psTeam'); const active = !!document.getElementById('psAct')?.checked;
+    const who = [...document.querySelectorAll('.psWho:checked')].map(x => x.value);
+    closeModal();
+    const row = { name, team_id: team, min_needed: min, preferred: pref, active };
     if (id) { row.id = id; row.sort = S.pos[id].sort || 0; } else row.sort = Math.max(0, ...allPositions().filter(p => p.team === team).map(p => p.sort || 0)) + 1;
-    if (await q(sb.from('positions').upsert(row))) { reload(); if (!id) toast(`Added ${name}. Now tick it on each person who can serve it.`); }
+    const saved = await q(sb.from('positions').upsert(row).select('id').single()); if (!saved) return;
+    const pid = saved.id || id;
+    const drop = people().filter(x => qualified(x.id, pid) && !who.includes(x.id)).map(x => x.id);
+    if (drop.length) await q(sb.from('person_positions').delete().eq('position_id', pid).in('person_id', drop));
+    const add = who.filter(x => !qualified(x, pid));
+    if (add.length) await q(sb.from('person_positions').upsert(add.map(x => ({ person_id: x, position_id: pid })), { onConflict: 'person_id,position_id', ignoreDuplicates: true }));
+    reload(); if (!id) toast(who.length ? `Added ${name}.` : `Added ${name}. Tick who can serve it, here or on each person.`);
   },
   async delPosition(el) {
     if (!tapTwice(el, 'Tap again: its assignments go too')) return;
