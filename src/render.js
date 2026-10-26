@@ -9,6 +9,7 @@ import { vLive } from './views/live.js';
 import { vPeople } from './views/people.js';
 import { vSwaps } from './views/swaps.js';
 import { vTemplates } from './views/templates.js';
+import { vStage } from './views/timer.js';
 import { vLanding, vSignin, vNotMember, vNeedsMigration } from './views/auth.js';
 
 export const VIEWS = { home: vHome, calendar: vCalendar, live: vLive, roster: vPeople, swaps: vSwaps, templates: vTemplates };
@@ -18,6 +19,7 @@ export function render() {
   const a = document.activeElement;
   if (ui.ready && a && a.classList && a.classList.contains('draft')) { pending = true; return; }   // don't wipe a field mid-typing
   pending = false;
+  stageMode(false);
   const tabs = document.getElementById('tabs'); const main = document.getElementById('main'); const who = document.getElementById('who');
   tabs.innerHTML = TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${ui.tab === k}">${l}</button>`).join('');
   if (!ui.session) {
@@ -30,7 +32,10 @@ export function render() {
   if (!ui.ready) { tabs.hidden = true; main.innerHTML = '<div class="empty">Loading the church schedule…</div>'; return; }
   if (ui.needsMigration) { tabs.hidden = true; main.className = 'wrap center'; main.innerHTML = vNeedsMigration(); return; }
   if (!me.admin && !mp) { tabs.hidden = true; main.className = 'wrap center'; main.innerHTML = vNotMember(); return; }
+  if (ui.stage) { stageMode(true); main.className = 'stage-wrap'; main.innerHTML = vStage(); return; }
   tabs.hidden = false;
   main.innerHTML = (VIEWS[ui.tab] || vHome)();
 }
+/* The stage screen hides the app header and fills the window. */
+function stageMode(on) { document.body.classList.toggle('stage-mode', on); }
 export const renderPending = () => { if (pending) render(); };

@@ -1,15 +1,17 @@
 /* Everything a click, change or keystroke can do. Keys match data-act attributes in the views. */
-import { S, ui, me, T } from './state.js';
+import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
 import { ic } from './icons.js';
-import { sb, q, reload, saveSun, ensureSun } from './data.js';
+import { sb, q, reload, saveSun, ensureSun, timerAction } from './data.js';
 import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
   docs, docOf, visible, monthRows, monthState, svcKeys, svcName, newSun, templates, cfg, isOff, myPerson, pname, posName,
-  asgOf, planAutofill, candidates, allPositions, teamsList, qualified, positionsList,
+  asgOf, planAutofill, candidates, allPositions, teamsList, qualified, positionsList, tplFor,
 } from './domain.js';
+import { timerOf } from './timer.js';
+import { canRun } from './views/timer.js';
 import { timeRange } from './views/shared.js';
 
 /* ---------- helpers ---------- */
@@ -55,6 +57,30 @@ async function autofill(m) {
 const val = id => document.getElementById(id)?.value ?? '';
 const tapTwice = (el, label) => { if (el.dataset.sure === '1') return true; el.dataset.sure = '1'; el.textContent = label; return false; };
 
+/* ---------- live timer ---------- */
+const lastTap = { k: '', t: 0 };
+/** Run one timer button; a quick double tap on the same button counts once. */
+async function runTimer(sun, svc, op, arg = {}) {
+  const k = op + '|' + sun + '|' + svc + '|' + JSON.stringify(arg); const t = Date.now();
+  if (lastTap.k === k && t - lastTap.t < 700) return; lastTap.k = k; lastTap.t = t;
+  if (op === 'start') {
+    const items = (tplFor(docOf(sun), svc).order || []).filter(o => String(o.item || '').trim()).map(o => ({ id: o.id, item: o.item, min: +o.min || 0 }));
+    if (!items.length) { toast('Add an order of service on the Templates tab first.'); return; }
+    arg = { items };
+  }
+  await timerAction(sun, svc, op, arg);
+}
+export function stageKey(e) {
+  if (!ui.stage || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input,textarea,select')) return;
+  if (e.key === 'f' || e.key === 'F') { H.stageFull(); return; }
+  const { sun, svc } = ui.stage; const doc = docOf(sun); if (!canRun(doc)) return;
+  const t = timerOf(sun, svc); if (!t || t.endedAt) return;
+  const op = e.key === ' ' || e.key === 'ArrowRight' ? 'next' : e.key === 'ArrowLeft' ? 'back'
+    : e.key === 'p' || e.key === 'P' ? (t.pausedAt ? 'resume' : 'pause') : e.key === '+' || e.key === '=' ? 'add' : null;
+  if (!op) return;
+  e.preventDefault(); runTimer(sun, svc, op, op === 'add' ? { sec: 60 } : {});
+}
+
 /* ---------- handlers ---------- */
 export const H = {
   tab(el) { ui.tab = el.dataset.tab; try { localStorage.setItem('ss-tab', ui.tab); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
@@ -64,6 +90,28 @@ export const H = {
   month(el) { ui.month = shiftMonth(ui.month, +el.dataset.k); render(); },
   item(el) { toggleTick('live:' + ui.liveSvc + ':' + el.dataset.k, el.getAttribute('aria-pressed') !== 'true'); },
   tick(el) { toggleTick(el.dataset.k, el.getAttribute('aria-pressed') !== 'true'); },
+  async tmr(el) {
+    const { op, sun, svc } = el.dataset;
+    if (el.dataset.confirm && !tapTwice(el, el.dataset.confirm)) return;
+    let arg = {};
+    if (op === 'add') arg = { sec: +el.dataset.sec || 0 };
+    if (op === 'message') { const inp = document.getElementById(`tmsg-${sun}-${svc}`); arg = { text: el.dataset.clear ? '' : (inp?.value || '') }; inp?.blur(); if (el.dataset.clear && inp) inp.value = ''; }
+    await runTimer(sun, svc, op, arg);
+  },
+  stageOpen(el) {
+    const url = location.pathname + '#stage/' + el.dataset.sun + '/' + el.dataset.svc;
+    if (!window.open(url, '_blank')) location.href = url;   // pop-up blocked: open it here
+  },
+  stageFull() {
+    if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
+    const r = document.documentElement.requestFullscreen?.();
+    if (!r) toast('Use your browser menu to go full screen, or add the page to your home screen.'); else r.catch(() => toast('Full screen was blocked. Tap the button again.'));
+  },
+  stageExit() {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    forgetStage();
+    history.replaceState(null, '', location.pathname); ui.stage = null; ui.tab = 'live'; render();
+  },
 
   /* calendar */
   async assign(el) {

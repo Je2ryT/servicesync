@@ -1,6 +1,6 @@
 # ServiceSync · Mont Carmel
 
-Sunday service scheduling for Mont Carmel Church: teams and positions (coordinators, worship, sound, ushers…), monthly calendar with auto-fill, coverage and workload checks, double-booking warnings, live Sunday checklists, confirm/decline and swap requests, and order-of-service templates.
+Sunday service scheduling for Mont Carmel Church: teams and positions (coordinators, worship, sound, ushers…), monthly calendar with auto-fill, coverage and workload checks, double-booking warnings, live Sunday checklists, a live service timer with a full-screen stage screen, confirm/decline and swap requests, and order-of-service templates.
 
 - **Hosting:** Vercel (Vite build, settings in `vercel.json`)
 - **Logins and data:** Supabase (free tier is plenty)
@@ -20,6 +20,22 @@ Do these two steps close together, in this order:
 Then open **People → Teams & positions** to add teams such as Worship, Sound or Ushers, and tick on each person which positions they can serve.
 
 Until step 2 is live, the old app keeps working, but anything changed in it after step 1 won't carry over. If the new app shows **Database update needed**, step 1 hasn't been run yet.
+
+## Live service timer
+
+On **Live**, each service has a **Service timer** card. Press **Start service** and it counts down each segment of the order of service (from **Templates**), in sync on every screen.
+
+- **Next** finishes the current segment, ticks it off in the order of service, and starts the next one. **←** goes back one segment.
+- **Pause / Resume**, and **−1 / +1 / +5 min** to stretch or shorten the current segment.
+- **Message** puts a short note in large type on the stage screen ("Wrap up", "Merci de conclure"). **Clear** removes it.
+- **End service** stops the clock. Afterwards the card shows planned against actual minutes for every segment, and the order of service shows the actual time next to each item.
+
+**Stage screen.** **Stage screen** opens the timer in a new window: segment name, a giant countdown, what's next, the time of day, and whether the service is on time. It turns amber near the end of a segment and red when it runs over. Press **Full screen** (or **F**). The French service's screen is in French.
+The address looks like `…/#stage/2026-11-01/en`, so a booth laptop or TV can bookmark it. It needs someone signed in. From a keyboard, **Space** or **→** = next, **←** = back, **P** = pause, **+** = add a minute (for people allowed to run the timer).
+
+Admins can run any timer; people on the roster can run timers on published Sundays.
+
+**Updating an existing install:** run `migrations/002-live-timer.sql` in Supabase (SQL Editor) before merging the timer into `main`. If you merge first, everything else keeps working and the timer card asks for the update.
 
 ## Working on the code
 

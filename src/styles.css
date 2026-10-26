@@ -229,3 +229,55 @@ input[type=email]{background:var(--surface);border:1px solid var(--line);border-
 .pgroup>span{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .prow{padding:12px 20px;border-top:1px solid var(--line);display:grid;gap:6px}
 .ch+.prow{border-top:0}
+
+/* ---------- live timer ---------- */
+.tcard .ch{border-bottom:0;padding-bottom:0}
+.tface{margin:12px 20px 4px;border-radius:14px;padding:18px 20px;background:linear-gradient(115deg,var(--hero1),var(--hero2));color:#fff;display:grid;gap:8px;--tc:#fff;--tb:#7f9cff}
+.tface.lv-warn{--tc:#ffd166;--tb:#ffd166}
+.tface.lv-over{--tc:#ff8a80;--tb:#ff6b5e}
+.tface.ph-paused .tbig{opacity:.55}
+.tseg{font-weight:600;font-size:1.05rem;color:var(--hero-muted);overflow-wrap:anywhere}
+.tbig{font-size:clamp(3rem,13vw,5.5rem);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--tc)}
+.tbar{height:6px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
+.tbar i{display:block;height:100%;background:var(--tb);border-radius:inherit;transition:width .25s linear}
+.tmeta{display:flex;justify-content:space-between;gap:6px 16px;flex-wrap:wrap;color:var(--hero-muted);font-size:.88rem}
+.tctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 20px 0}
+.tctl:last-child,.tmsg:last-child{padding-bottom:18px}
+.tctl .btn.big{padding:12px 22px;font-size:1rem;font-weight:600}
+.tmsg{display:flex;gap:8px;padding:12px 20px 18px}
+.tmsg input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface)}
+.tlog{width:calc(100% - 40px);margin:14px 20px 18px;border-collapse:collapse;font-size:.88rem}
+.tlog th,.tlog td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}
+.tlog th{color:var(--muted);font-weight:500;font-size:.78rem}
+.tlog td:nth-child(n+2),.tlog th:nth-child(n+2){text-align:right;font-variant-numeric:tabular-nums}
+.tlog .over{color:var(--bad)}
+.it .act{color:var(--fg);font-weight:600}
+.it .act.over{color:var(--bad)}
+
+/* stage screen: fills the window, readable from the back of the room */
+body.stage-mode{background:#070a1c}
+body.stage-mode header.top,body.stage-mode::before{display:none}
+main.stage-wrap{padding:0;max-width:none;display:block}
+.stage{min-height:100vh;min-height:100dvh;background:#070a1c;color:#fff;display:flex;flex-direction:column;padding:max(16px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));gap:2vh;transition:background .4s}
+.stage.lv-over:not(.ph-ended){background:#2a0710}
+.stop{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;color:#aab2d8;font-size:clamp(.9rem,2.2vw,1.5rem)}
+.stop b{display:block;color:#fff;font-weight:600}
+.snow{font-variant-numeric:tabular-nums;font-weight:600;color:#fff;font-size:clamp(1.2rem,3.4vw,2.4rem)}
+.smsg{background:#ffd166;color:#1a1300;font-weight:700;border-radius:14px;padding:1.2vh 2vw;font-size:clamp(1.3rem,4.5vw,3.6rem);text-align:center;overflow-wrap:anywhere}
+.stage .tface{flex:1;margin:0;background:none;padding:0;align-content:center;gap:2.5vh;text-align:center}
+.stage .tseg{color:#fff;font-size:clamp(1.6rem,5.5vw,4.5rem);line-height:1.1}
+.stage .tbig{font-size:min(30vw,44vh);letter-spacing:-.03em}
+.stage .tbar{height:clamp(8px,1.4vh,16px);width:min(100%,1400px);margin-inline:auto}
+.stage .tmeta{color:#aab2d8;font-size:clamp(1rem,2.8vw,2.2rem);justify-content:space-between;width:min(100%,1400px);margin-inline:auto}
+.stage.lv-over:not(.ph-ended) .tbig{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.stage.lv-over .tbig{animation:none}.tbar i{transition:none}}
+.sctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;opacity:.35;transition:opacity .3s}
+.sctl:hover,.sctl:focus-within{opacity:1}
+.sctl .btn{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);color:#fff;box-shadow:none}
+.sctl .btn.ghost{background:none;border-color:transparent;color:#aab2d8}
+.sctl .keys{color:#7d86b3;font-size:.82rem}
+:fullscreen .sctl{opacity:0}
+:fullscreen .sctl:hover,:fullscreen .sctl:focus-within{opacity:1}
+.stage-empty{margin:auto;text-align:center;display:grid;gap:16px;justify-items:center;color:#aab2d8}
+@media (max-width:600px){.stage .tmeta{flex-direction:column;align-items:center}.tctl .btn.big{flex:1;justify-content:center}}
