@@ -2,18 +2,20 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { freshDb, as, admin, seedChurch, JERRY, ANNA, STRANGER } from './harness.js';
 
-let db;
-beforeAll(async () => { db = await freshDb(); await seedChurch(db); await admin(db, 'delete from activity_log'); }, 60000);
+let db; let migrations008 = false;
+beforeAll(async () => { db = await freshDb(); await seedChurch(db); await admin(db, 'delete from activity_log'); migrations008 = !!(await admin(db, `select to_regclass('public.flow_entries') t`))[0].t; }, 60000);
 
 describe('activity log (005)', () => {
   it('records who made a change, with the row before and after', async () => {
     await as(db, ANNA, `insert into members (id, name, status) values ('m-test', 'Grace Lumbu', 'newcomer')`, [], { keep: true });
     await as(db, JERRY, `update members set status = 'member' where id = 'm-test'`, [], { keep: true });
-    const rows = await admin(db, `select actor, tbl, op, row_id, old ->> 'status' o, new ->> 'status' n from activity_log order by id`);
+    const rows = await admin(db, `select actor, tbl, op, row_id, old ->> 'status' o, new ->> 'status' n from activity_log where tbl = 'members' order by id`);
     expect(rows).toEqual([
       { actor: ANNA, tbl: 'members', op: 'insert', row_id: 'm-test', o: null, n: 'newcomer' },
       { actor: JERRY, tbl: 'members', op: 'update', row_id: 'm-test', o: 'newcomer', n: 'member' },
     ]);
+    // the newcomer also joined the follow-up flow (008), recorded under Anna's name
+    expect((await admin(db, `select actor from activity_log where tbl = 'flow_entries'`)).map(r => r.actor)).toEqual(migrations008 ? [ANNA] : []);
   });
   it('skips saves that change nothing but a timestamp', async () => {
     const before = (await admin(db, 'select count(*)::int n from activity_log'))[0].n;
