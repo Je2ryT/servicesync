@@ -29,7 +29,7 @@ describe('administrator access levels (012)', () => {
 
   it('every administrator still reads everything, including unpublished Sundays', async () => {
     expect((await as(db, PASTOR, `select count(*)::int n from sundays`))[0].n).toBe(2);
-    expect((await as(db, PASTOR, `select count(*)::int n from admins`))[0].n).toBe(2);
+    expect((await as(db, PASTOR, `select count(*)::int n from admins`))[0].n).toBe(1);   // only their own row (014)
   });
 
   it('activity log and opt-outs need Reports / Messaging', async () => {
@@ -80,5 +80,13 @@ describe('administrator access levels (012)', () => {
     expect((await as(db, ANNA, `select (timer_control('2026-11-01', 'en', 'start', $1::jsonb)).seg`, [items]))[0].seg).toBe(0);     // roster, published
     await expect(as(db, ANNA, `select timer_control('2026-11-08', 'en', 'start', $1::jsonb)`, [items])).rejects.toThrow(/roster/);  // roster, unpublished
     await expect(as(db, JERRY, `update admins set perms = '{live,cooking}' where email = $1`, [PASTOR])).rejects.toThrow(/admins_perms_known/);
+  });
+
+  it('only full administrators see who the administrators are (014)', async () => {
+    const { applyMigration } = await import('./harness.js');
+    await applyMigration(db, 14);
+    expect((await as(db, JERRY, `select count(*)::int n from admins`))[0].n).toBe(2);
+    expect((await as(db, PASTOR, `select email from admins`)).map(r => r.email)).toEqual([PASTOR]);   // only their own row
+    expect((await as(db, ANNA, `select count(*)::int n from admins`))[0].n).toBe(0);
   });
 });

@@ -8,8 +8,8 @@ import { people, activePeople, myPerson, loadFor, fairness, heavy, positionsOf, 
 import { can, isFull } from '../access.js';
 
 export function vPeople() {
-  const seg = `<div><div class="seg"><button data-act="psub" data-v="all" aria-pressed="${ui.psub === 'all'}">${esc(t('everyone'))}</button><button data-act="psub" data-v="people" aria-pressed="${ui.psub === 'people'}">${esc(t('servingTeam'))}</button><button data-act="psub" data-v="teams" aria-pressed="${ui.psub === 'teams'}">${esc(t('teamsPositions'))}</button>${me.admin ? `<button data-act="psub" data-v="admins" aria-pressed="${ui.psub === 'admins'}">${esc(t('admins'))}</button>` : ''}</div></div>`;
-  if (ui.psub === 'admins' && me.admin) return vAdmins(seg);
+  const seg = `<div><div class="seg"><button data-act="psub" data-v="all" aria-pressed="${ui.psub === 'all'}">${esc(t('everyone'))}</button><button data-act="psub" data-v="people" aria-pressed="${ui.psub === 'people'}">${esc(t('servingTeam'))}</button><button data-act="psub" data-v="teams" aria-pressed="${ui.psub === 'teams'}">${esc(t('teamsPositions'))}</button>${isFull() ? `<button data-act="psub" data-v="admins" aria-pressed="${ui.psub === 'admins'}">${esc(t('admins'))}</button>` : ''}</div></div>`;
+  if (ui.psub === 'admins' && isFull()) return vAdmins(seg);   // only full administrators see who the administrators are
   return ui.psub === 'teams' ? vTeams(seg) : ui.psub === 'people' ? vRoster(seg) : vDirectory(seg);
 }
 
@@ -21,7 +21,7 @@ function vRoster(seg) {
     const n = loadFor(t.id, m);
     const offs = Object.entries(S.off[t.id]?.dates || {}).filter(([d, v]) => v && d >= T.todayIso).map(([d]) => d).sort();
     const canEdit = can('schedule') || t.id === mp; const pos = positionsOf(t.id);
-    return `<div class="card mem"><div class="top"><div><div class="row"><b>${esc(t.name)}</b>${me.admin && t.email && S.admins[String(t.email).toLowerCase()] ? `<span class="pill role">${esc(tr('adminPill'))}</span>` : ''}${t.active === false ? '<span class="pill mute">INACTIVE</span>' : ''}</div><div class="ph">${esc(t.phone || 'No phone')}</div></div>${canEdit ? `<button class="ib" data-act="editPerson" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">${ic('pencil')}</button>` : ''}</div>
+    return `<div class="card mem"><div class="top"><div><div class="row"><b>${esc(t.name)}</b>${isFull() && t.email && S.admins[String(t.email).toLowerCase()] ? `<span class="pill role">${esc(tr('adminPill'))}</span>` : ''}${t.active === false ? '<span class="pill mute">INACTIVE</span>' : ''}</div><div class="ph">${esc(t.phone || 'No phone')}</div></div>${canEdit ? `<button class="ib" data-act="editPerson" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">${ic('pencil')}</button>` : ''}</div>
       <div class="row">${pos.length ? pos.map(p => `<span class="pill role">${esc(p.name)}</span>`).join('') : '<span class="pill warn">No positions yet</span>'}</div>
       <div class="row">${t.langs?.en !== false ? '<span class="pill info">English</span>' : ''}${t.langs?.fr !== false ? '<span class="pill info">French</span>' : ''}${heavy(n, f.avg) ? '<span class="pill bad">Heavy load</span>' : ''}</div>
       <div class="meta"><strong>${n}</strong> assignment${n === 1 ? '' : 's'} this month${offs.length ? ' · Off: ' + offs.slice(0, 3).map(d => esc(fmt(d, { month: 'short', day: 'numeric' }))).join(', ') : ''}</div>
