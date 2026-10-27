@@ -3,6 +3,7 @@ import { ui, me } from '../state.js';
 import { esc } from '../util.js';
 import { ic } from '../icons.js';
 import { t, locale } from '../i18n.js';
+import { can, isFull } from '../access.js';
 
 export const msgState = () => ui.msgs || (ui.msgs = { rows: [], loaded: false, loading: false, error: '', open: null, recips: null });
 const STATUS = { sending: 'statusSending', sent: 'statusSent', partial: 'statusPartial', failed: 'statusFailed', delivered: 'statusDelivered', skipped: 'statusSkipped', queued: 'statusQueued' };
@@ -29,7 +30,7 @@ export function vMessages() {
   if (!s.rows.length) return head + `<div class="card empty">${esc(t('noMessages'))}</div>`;
   return head + `<section class="card msg-list">${s.rows.map(m => `<button class="msg-it" data-act="msgOpen" data-id="${esc(m.id)}">
       <span class="msg-when">${esc(when(m.at))}</span>
-      <span class="msg-what"><b>${esc(m.subject || m.body.split('\n')[0].slice(0, 90))}</b><small>${me.admin ? esc(m.senderName || m.sender) + ' · ' : ''}${chan(m.channel)} · ${esc(t('inUse', { n: m.recipients }))}</small></span>
+      <span class="msg-what"><b>${esc(m.subject || m.body.split('\n')[0].slice(0, 90))}</b><small>${can('messaging') ? esc(m.senderName || m.sender) + ' · ' : ''}${chan(m.channel)} · ${esc(t('inUse', { n: m.recipients }))}</small></span>
       <span class="msg-st">${statusPill(m.status)}<small>${esc(t('sentSummary', { sent: m.sent, failed: m.failed, skipped: m.skipped }))}</small></span></button>`).join('')}</section>`;
 }
 

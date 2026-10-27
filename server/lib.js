@@ -31,9 +31,12 @@ export async function userFromToken(token, { env = process.env, fetch = globalTh
 
 /** { admin, coordinatorId, name } for an email. */
 export async function roleOf(db, email) {
-  const [a] = await db.q(`select 1 from admins where lower(email) = $1 limit 1`, [email]);
+  // to_jsonb keeps this working before migration 012 adds admins.perms (no perms = full access)
+  const [a] = await db.q(`select to_jsonb(a) -> 'perms' as perms from admins a where lower(email) = $1 limit 1`, [email]);
   const [c] = await db.q(`select id, name from coordinators where lower(email) = $1 limit 1`, [email]);
-  return { admin: !!a, coordinatorId: c?.id || null, name: c?.name || '' };
+  const perms = a ? (Array.isArray(a.perms) ? a.perms : null) : [];
+  // "admin" here means "may message anyone": full administrators and those with the Messaging area.
+  return { admin: !!a && (perms === null || perms.includes('messaging')), anyAdmin: !!a, perms, coordinatorId: c?.id || null, name: c?.name || '' };
 }
 
 /* ---------- signed links (unsubscribe) ---------- */

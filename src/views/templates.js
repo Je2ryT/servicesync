@@ -4,9 +4,10 @@ import { esc } from '../util.js';
 import { ic } from '../icons.js';
 import { templates, cfg, tplFor, total } from '../domain.js';
 import { tagsLine } from './layout.js';
+import { can, isFull } from '../access.js';
 
 export function vTemplates() {
-  const T = templates(); const c = cfg(); const ed = me.admin;
+  const T = templates(); const c = cfg(); const ed = can('templates');
   let h = `<div><h1>Templates &amp; checklists</h1><p class="sub">Reusable order of service per language, and what every coordinator does before, during and after.</p></div>
    <div><div class="seg"><button data-act="tsub" data-v="order" aria-pressed="${ui.tsub === 'order'}">Order of service</button><button data-act="tsub" data-v="check" aria-pressed="${ui.tsub === 'check'}">Checklists</button></div></div>`;
   if (ui.tsub === 'check') {

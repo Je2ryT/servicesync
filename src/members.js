@@ -5,6 +5,7 @@ import { ym, iso, fmt, toMin, clock } from './util.js';
 import { myPerson, assignments, docOf, status, warnings, svcName, posName } from './domain.js';
 import { isVisitor } from './people.js';
 import { myFollowups, isOverdue } from './flows.js';
+import { can } from './access.js';
 
 /* ---------- members ---------- */
 export const STATUS = { member: 'Member', regular: 'Regular attender', newcomer: 'Newcomer', visitor: 'Visitor' };
@@ -76,7 +77,7 @@ export function notifications() {
   for (const { a, d } of pr.upcoming.filter(x => status(x.a) === 'awaiting').slice(0, 3)) {
     out.push({ kind: 'action', icon: 'clock', text: `Please confirm: ${posName(a.pos)}, ${svcName(d, a.svc)}, ${fmt(d.date)}`, date: d.date, act: 'tab', data: 'home' });
   }
-  if (me.admin) {
+  if (can('schedule')) {
     const swaps = Object.values(S.swap).filter(s => s.status === 'open').length;
     if (swaps) out.push({ kind: 'action', icon: 'swap', text: `${swaps} swap request${swaps === 1 ? '' : 's'} waiting for approval`, act: 'tab', data: 'swaps' });
     const w = warnings().length;

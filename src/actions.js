@@ -29,10 +29,11 @@ import { parseCsv, detectColumns, memberRows, newFamilies } from './importer.js'
 import { fold } from './members.js';
 import { timeRange } from './views/shared.js';
 import { reportDef, reportCsv, csvName } from './reportdefs.js';
-import { removeForm } from './views/admins.js';
+import { removeForm, accessForm } from './views/admins.js';
 import { placeholderForm } from './views/layout.js';
 import { tagsOf, ROLES } from './layout.js';
 import { keyOf, ctx as rptCtx, flowPickForm, scheduleForm, parseEmails } from './views/rpt.js';
+import { can, isFull } from './access.js';
 
 /* ---------- helpers ---------- */
 function shareText() {
@@ -222,7 +223,7 @@ export const H = {
   /* people */
   psub(el) { ui.psub = el.dataset.v; ui.person = null; ui.prof = null; render(); },
   editPerson(el) {
-    const id = el.dataset.id; const adm = me.admin;
+    const id = el.dataset.id; const adm = can('schedule');
     const t = id ? S.people[id] : { name: '', email: '', phone: '', langs: { en: true, fr: true }, active: true, max: 4 };
     const days = [...sundaysOf(ym(T.now)), ...sundaysOf(shiftMonth(ym(T.now), 1)), ...sundaysOf(shiftMonth(ym(T.now), 2))].filter(d => d >= T.todayIso);
     const groups = teamsList().map(tm => [tm, allPositions().filter(p => p.team === tm.id)]).filter(([, ps]) => ps.length);
@@ -280,7 +281,7 @@ export const H = {
     const row = { name, phone: val('mPhone').trim() || null, email: val('mEmail').trim().toLowerCase() || null, lang: val('mLang') || 'fr', household: val('mHouse').trim() || null };
     if (rich) Object.assign(row, { first_name: first || null, last_name: last || null, category_id: val('mCat') || 'visitors' });
     else row.status = val('mStatus') || 'newcomer';
-    if (me.admin && document.getElementById('mNotes')) row.notes = val('mNotes').trim() || null;
+    if (can('people') && document.getElementById('mNotes')) row.notes = val('mNotes').trim() || null;
     closeModal();
     let saved;
     if (id) saved = await q(sb.from('members').update(row).eq('id', id).select('id').single());
@@ -293,7 +294,7 @@ export const H = {
   async delMember(el) { if (!tapTwice(el, 'Tap again: attendance goes too')) return; closeModal(); if (await q(sb.from('members').delete().eq('id', el.dataset.id))) reload(); },
 
   /* import from Elvanto */
-  impOpen() { if (!me.admin) return; ui.imp = null; modal(importView()); },
+  impOpen() { if (!can('people')) return; ui.imp = null; modal(importView()); },
   impReset() { ui.imp = null; modal(importView()); },
   async impFile(el) {
     const f = el.files?.[0]; if (!f) return;
@@ -375,7 +376,7 @@ export const H = {
   pSelAll() { ui.psel = filterPeople({ ...ui.pf }).map(m => m.id); refreshPeople(); },
   pSelNone() { ui.psel = []; refreshPeople(); },
   async pBulkCat(el) {
-    if (!me.admin || !el.value || !ui.psel.length) return;
+    if (!can('people') || !el.value || !ui.psel.length) return;
     const cat = el.value; const ids = [...ui.psel]; el.disabled = true;
     for (const part of chunks(ids)) if (!await q(sb.from('members').update({ category_id: cat }).in('id', part))) { el.disabled = false; return; }
     ui.psel = []; reload(); toast(`${ids.length} → ${cats().find(c => c.id === cat)?.name || cat}`);
@@ -386,7 +387,7 @@ export const H = {
   },
   openPerson(el) { ui.person = el.dataset.id; ui.prof = null; ui.tab = 'roster'; ui.psub = 'all'; render(); window.scrollTo(0, 0); loadProfile(ui.person); },
   personBack() { ui.person = null; ui.prof = null; render(); },
-  personEdit(el) { if (!me.admin) return; modal(personForm(el.dataset.id || null)); },
+  personEdit(el) { if (!can('people')) return; modal(personForm(el.dataset.id || null)); },
   pFamPick(el) { const w = document.getElementById('pFamNewWrap'); if (w) { w.hidden = el.value !== '__new'; if (!w.hidden) document.getElementById('pFamNew')?.focus(); } },
   async personSave(el) {
     const first = val('pFirst').trim().replace(/\s+/g, ' '), last = val('pLast').trim().replace(/\s+/g, ' ');
@@ -422,7 +423,7 @@ export const H = {
   async noteDel(el) { if (!tapTwice(el, t('tapAgain'))) return; if (await q(sb.from('person_notes').delete().eq('id', el.dataset.id))) loadProfile(ui.person); },
 
   /* categories (admins) */
-  catEdit() { if (!me.admin) return; ui.catDraft = cats(true).map(c => ({ id: c.id, name: c.name, nameFr: c.nameFr || '', hidden: c.active === false })); modal(categoryForm()); },
+  catEdit() { if (!can('people')) return; ui.catDraft = cats(true).map(c => ({ id: c.id, name: c.name, nameFr: c.nameFr || '', hidden: c.active === false })); modal(categoryForm()); },
   catMove(el) { syncCatDraft(); const i = +el.dataset.i; if (i > 0) { const d = ui.catDraft; [d[i - 1], d[i]] = [d[i], d[i - 1]]; } modal(categoryForm()); },
   catAdd() { syncCatDraft(); const n = val('catNew').trim(); if (!n) return; ui.catDraft.push({ id: null, name: n, nameFr: '', hidden: false }); modal(categoryForm()); },
   async catSave() {
@@ -461,14 +462,31 @@ export const H = {
 
   /* administrators */
   async adminAdd() {
-    if (!me.admin) return;
+    if (!isFull()) return;
     const email = (val('admEmail').trim() || val('admPick')).toLowerCase(); const msg = document.getElementById('admMsg');
     const say = text => { if (msg) { msg.textContent = text; msg.style.color = 'var(--bad)'; } };
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say(t('badEmails', { list: email || '—' }));
     if (S.admins[email]) return say(t('adminAlready', { email }));
-    if (await q(sb.from('admins').insert({ email }))) { S.admins[email] = { by: String(me.email || '').toLowerCase(), at: Date.now() }; render(); toast(t('adminAdded', { email })); reload(); }
+    if (ui.permsMissing) { if (await q(sb.from('admins').insert({ email }))) { S.admins[email] = { by: String(me.email || '').toLowerCase(), at: Date.now(), perms: null }; render(); toast(t('adminAdded', { email })); reload(); } return; }
+    modal(accessForm(email, true));
   },
-  adminRemove(el) { if (me.admin && Object.keys(S.admins).length > 1) modal(removeForm(el.dataset.email)); },
+  adminAccess(el) { if (isFull()) modal(accessForm(el.dataset.email, false)); },
+  accFull(el) {
+    document.querySelector('.acc-areas')?.classList.toggle('off', el.checked);
+    document.querySelectorAll('.accArea').forEach(b => { b.disabled = el.checked; if (el.checked) b.checked = true; });
+  },
+  async adminAccessSave(el) {
+    if (!isFull()) return;
+    const email = el.dataset.email; const isNew = !!el.dataset.new;
+    const perms = document.getElementById('accFull')?.checked ? null : [...document.querySelectorAll('.accArea:checked')].map(b => b.value);
+    closeModal();
+    const ok = isNew ? await q(sb.from('admins').insert({ email, perms })) : await q(sb.from('admins').update({ perms }).eq('email', email));
+    if (!ok) return;
+    S.admins[email] = { ...(S.admins[email] || { by: String(me.email || '').toLowerCase(), at: Date.now() }), perms };
+    if (email === String(me.email || '').toLowerCase()) me.perms = perms;
+    render(); toast(t(isNew ? 'adminAdded' : 'accessSaved', { email })); reload();
+  },
+  adminRemove(el) { if (isFull() && Object.keys(S.admins).length > 1) modal(removeForm(el.dataset.email)); },
   async adminRemoveGo(el) {
     const email = el.dataset.email; closeModal();
     if (!await q(sb.from('admins').delete().eq('email', email))) return;
@@ -491,7 +509,7 @@ export const H = {
     let n = 0; for (const id of ids) if (await q(sb.rpc('flow_enroll', { p_member: id, p_flow: flow }))) n++;
     ui.rpt.sel = []; reload(); toast(t('addedToFlowN', { n }));
   },
-  rschNew() { if (me.admin && ui.rpt.open) modal(scheduleForm(ui.rpt.open)); },
+  rschNew() { if (can('reports') && ui.rpt.open) modal(scheduleForm(ui.rpt.open)); },
   async rschSave(el) {
     const { ok, bad } = parseEmails(val('rsTo')); const err = document.getElementById('rsErr');
     if (bad.length || !ok.length) { if (err) err.textContent = t('badEmails', { list: bad.join(', ') || '—' }); return; }
@@ -562,7 +580,7 @@ export const H = {
     if (await q(sb.rpc('flow_enroll', { p_member: member, p_flow: flow }))) { reload(); toast(t('saved')); if (ui.person) loadProfile(ui.person); }
   },
   flowEdit(el) {
-    if (!me.admin) return; const id = el.dataset.id || '';
+    if (!can('followups')) return; const id = el.dataset.id || '';
     ui.flowDraft = id ? { id, name: S.flows[id].name, nameFr: S.flows[id].nameFr || '', steps: stepsOf(id).map(s => ({ id: s.id, title: s.title, titleFr: s.titleFr || '', assignee: s.assignee || '', days: s.days })), removed: [] }
       : { id: '', name: '', nameFr: '', steps: [{ id: null, title: '', titleFr: '', assignee: '', days: 3 }], removed: [] };
     modal(flowForm());
@@ -589,7 +607,7 @@ export const H = {
   /* events */
   evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
   evDay(el) { ui.evDay = el.dataset.date || null; render(); },
-  editEvent(el) { if (!me.admin) return; modal(eventForm(el.dataset.id, el.dataset.date)); },
+  editEvent(el) { if (!can('schedule')) return; modal(eventForm(el.dataset.id, el.dataset.date)); },
   async saveCalEvent(el) {
     const title = val('eTitle').trim(); const date = val('eDate');
     if (!title) { toast('Give the event a title.'); return; }
@@ -694,6 +712,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll', 'layName', 'phRole']);
+export const CHANGE = new Set(['accFull', 'assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll', 'layName', 'phRole']);
 export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
 export { TABS, ic };

@@ -4,6 +4,7 @@ import { esc, fmt, monthName } from '../util.js';
 import { ic } from '../icons.js';
 import { monthState, monthRows, svcKeys, svcName, visible, cov, posCov, positionsList, teamsList, teamName, asgOf, status, broken, brokenText, pname, candidates } from '../domain.js';
 import { fairCard, stIcon, timeRange } from './shared.js';
+import { can, isFull } from '../access.js';
 
 export function vCalendar() {
   const m = ui.month; const st = monthState(m); const rows = monthRows(m);
@@ -11,12 +12,12 @@ export function vCalendar() {
   let h = `<div class="head"><div><h1>${esc(monthName(m))}</h1><p class="sub">Fill every position for each service. The number on each position is assigned / preferred.</p></div>
     <div class="row"><button class="btn sq" data-act="month" data-k="-1" aria-label="Previous month">${ic('left')}</button><button class="btn sq" data-act="month" data-k="1" aria-label="Next month">${ic('right')}</button>
     <button class="btn navy" data-act="share">${ic('share')} Share</button>
-    ${me.admin ? `<button class="btn" data-act="autofill" data-m="${m}">Auto-fill</button><button class="btn ${st === 'published' ? '' : 'cta'}" data-act="publishMonth" ${st === 'none' ? 'disabled' : ''}>${st === 'published' ? 'Unpublish' : 'Publish'}</button>` : ''}</div></div>
-    <div class="row">${st === 'none' ? '<span class="pill mute">NOT PLANNED</span>' : `<span class="pill ${st === 'published' ? 'ok' : 'warn'}">${st === 'published' ? 'Published' : 'Draft'}</span>`}${st !== 'none' ? `<span class="pill ${crit ? 'bad' : 'ok'}">${crit ? 'Rule conflicts' : 'No critical issues'}</span>` : ''}${me.admin ? `<button class="btn link" data-act="newEvent">${ic('plus')} Special event</button>` : ''}</div>`;
+    ${can('schedule') ? `<button class="btn" data-act="autofill" data-m="${m}">Auto-fill</button><button class="btn ${st === 'published' ? '' : 'cta'}" data-act="publishMonth" ${st === 'none' ? 'disabled' : ''}>${st === 'published' ? 'Unpublish' : 'Publish'}</button>` : ''}</div></div>
+    <div class="row">${st === 'none' ? '<span class="pill mute">NOT PLANNED</span>' : `<span class="pill ${st === 'published' ? 'ok' : 'warn'}">${st === 'published' ? 'Published' : 'Draft'}</span>`}${st !== 'none' ? `<span class="pill ${crit ? 'bad' : 'ok'}">${crit ? 'Rule conflicts' : 'No critical issues'}</span>` : ''}${can('schedule') ? `<button class="btn link" data-act="newEvent">${ic('plus')} Special event</button>` : ''}</div>`;
   h += '<div class="split"><div style="display:grid;gap:16px">';
   for (const r of rows) {
     const show = !r.doc || visible(r.doc);
-    h += `<div class="card sun"><div class="sh"><h2>${esc(r.doc?.special ? r.doc.title || 'Special event' : fmt(r.date, { weekday: 'long', month: 'long', day: 'numeric' }))}</h2><div class="row">${r.doc?.special ? `<span class="sub" style="margin:0">${esc(fmt(r.date, { weekday: 'long', month: 'long', day: 'numeric' }))}</span>` : ''}${r.doc && show ? `<button class="btn link" data-act="openLive" data-id="${esc(r.id)}" data-svc="${svcKeys(r.doc)[0]}">Live view</button>` : ''}${me.admin && r.doc?.special ? `<button class="btn danger" data-act="delEvent" data-id="${esc(r.id)}">Remove</button>` : ''}</div></div>
+    h += `<div class="card sun"><div class="sh"><h2>${esc(r.doc?.special ? r.doc.title || 'Special event' : fmt(r.date, { weekday: 'long', month: 'long', day: 'numeric' }))}</h2><div class="row">${r.doc?.special ? `<span class="sub" style="margin:0">${esc(fmt(r.date, { weekday: 'long', month: 'long', day: 'numeric' }))}</span>` : ''}${r.doc && show ? `<button class="btn link" data-act="openLive" data-id="${esc(r.id)}" data-svc="${svcKeys(r.doc)[0]}">Live view</button>` : ''}${can('schedule') && r.doc?.special ? `<button class="btn danger" data-act="delEvent" data-id="${esc(r.id)}">Remove</button>` : ''}</div></div>
       <div class="svcs" ${r.doc?.special ? 'style="grid-template-columns:1fr"' : ''}>${svcKeys(r.doc).map(s => svcCell(r, s, show)).join('')}</div></div>`;
   }
   h += `</div><div class="side">${fairCard(m)}<div class="card legend"><b>Legend</b>✓ confirmed · clock awaiting · ✕ declined. A red chip breaks a rule: wrong language, not set up for that position, Sunday off, declined, or booked twice at the same time. People may serve both services on the same Sunday.</div></div></div>`;
@@ -28,7 +29,7 @@ function svcCell(r, s, show) {
   let h = `<div><div class="svch"><div><h3>${esc(doc ? svcName(doc, s) : SVC[s].name)}</h3><div class="tm">${esc(timeRange(doc, s))}</div></div><span class="pill ${c.cls}">${esc(c.label)}</span></div>`;
   if (!show) return h + '<span class="sub">Not published yet</span></div>';
   const list = positionsList();
-  if (!list.length) return h + `<span class="sub">${me.admin ? 'Set up teams and positions on the People tab.' : 'No positions set up yet.'}</span></div>`;
+  if (!list.length) return h + `<span class="sub">${can('schedule') ? 'Set up teams and positions on the People tab.' : 'No positions set up yet.'}</span></div>`;
   const multiTeam = teamsList().length > 1; let lastTeam = null;
   for (const p of list) {
     if (multiTeam && p.team !== lastTeam) { lastTeam = p.team; h += `<div class="teamh">${esc(teamName(p.team))}</div>`; }
@@ -36,10 +37,10 @@ function svcCell(r, s, show) {
     h += `<div class="pos"><div class="posh"><span>${esc(p.name)}</span><span class="pc ${pc.cls}">${pc.n}/${pc.pref}</span></div><div class="chips">`;
     for (const a of held) {
       const b = broken(a);
-      h += `<span class="chip ${b ? 'bad' : ''}" ${b ? `title="${esc(brokenText(a))}"` : ''}>${stIcon(status(a))}${esc(pname(a.person))}${me.admin ? `<button data-act="unassign" data-a="${esc(a.id)}" aria-label="Remove ${esc(pname(a.person))}">${ic('x')}</button>` : ''}</span>`;
+      h += `<span class="chip ${b ? 'bad' : ''}" ${b ? `title="${esc(brokenText(a))}"` : ''}>${stIcon(status(a))}${esc(pname(a.person))}${can('schedule') ? `<button data-act="unassign" data-a="${esc(a.id)}" aria-label="Remove ${esc(pname(a.person))}">${ic('x')}</button>` : ''}</span>`;
     }
-    if (!held.length && !me.admin) h += '<span class="sub" style="margin:0">Open</span>';
-    if (me.admin) {
+    if (!held.length && !can('schedule')) h += '<span class="sub" style="margin:0">Open</span>';
+    if (can('schedule')) {
       const opts = candidates(r.id, r.date, s, p.id); let sugg = false;
       h += `<span class="chip add">${ic('plus')}<span class="sr">Assign ${esc(p.name)}</span><select data-act="assign" data-id="${esc(r.id)}" data-date="${r.date}" data-svc="${s}" data-pos="${esc(p.id)}" aria-label="Assign ${esc(p.name)}"><option value="">Assign ${esc(p.name)}…</option>${opts.map(t => {
         const tag = t.why ? ` (${t.why})` : !sugg ? ' · suggested' : ''; if (!t.why) sugg = true;

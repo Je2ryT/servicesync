@@ -27,6 +27,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 009 | `009-reports.sql` | Attendance & people reports, weekly report emails | Reports read what's already there, so they include history from before 009. Weekly emails need the messaging settings and `CRON_SECRET`. |
 | 010 | `010-admins.sql` | Manage administrators in the app (People → Administrators) | Emails are stored lower-case, the last administrator can't be removed, and changes go in the activity log. |
 | 011 | `011-service-layout.sql` | Printable service layout: names typed for one service | Placeholders themselves live in the templates, so the layout shows and prints before 011; typing a name needs 011. |
+| 012 | `012-admin-permissions.sql` | Different access for each administrator | Everyone who is an administrator today keeps full access; narrow it on People → Administrators afterwards. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -220,7 +221,20 @@ Without this step, the sign-in email links point to the wrong place.
 
 ### Adding or removing administrators
 
-Go to **People → Administrators** (administrators only). Pick someone from the serving team, or type any email address, then press **Add administrator**. To take someone off the list, press **Remove** next to their name. They stay on the serving team with a team member's access. The change applies the next time they open or reload the app. The last administrator can't be removed, so the church is never locked out.
+Go to **People → Administrators** (administrators only). Pick someone from the serving team, or type any email address, then press **Add administrator** and choose what they manage. To take someone off the list, press **Remove** next to their name. They stay on the serving team with a team member's access. The change applies the next time they open or reload the app. The last administrator can't be removed, so the church is never locked out.
+
+**Access levels** (after migration 012): give an administrator **Full access**, or tick only the areas they manage:
+
+| Area | What it allows |
+|---|---|
+| Schedule & teams | Plan and publish months, teams, positions, the serving team, swaps, days off, events |
+| People | Edit and remove members, categories, families, import; manage anyone's notes and saved filters |
+| Messaging | Text or email anyone; see every sent message and unsubscribe |
+| Follow-ups | Edit follow-up flows and steps; delete follow-ups |
+| Reports | Activity log and weekly report emails |
+| Templates | Order of service, placeholders, checklists |
+
+Every administrator can still see everything, write service reports, run the live timer and check people in. Only administrators with full access add or remove administrators or change their access, and there is always at least one with full access. The database enforces all of this, not just the screens.
 
 Before migration 010, or if you're ever locked out, you can do the same in the Supabase SQL Editor:
 ```sql

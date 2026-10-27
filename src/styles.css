@@ -794,3 +794,13 @@ ul.ro .ph-line{padding:4px 0 2px}
   .lay-name.print-only{display:inline}
   @page{margin:14mm}
 }
+.adm-perms{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.adm-btns{gap:6px;flex-wrap:nowrap}
+.acc-full,.acc-area{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;align-items:start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.acc-full{background:var(--navsel);border-color:transparent}
+.acc-full input,.acc-area input{width:18px;height:18px;margin-top:2px}
+.acc-full span,.acc-area span{display:grid;gap:2px}
+.acc-full small,.acc-area small{color:var(--muted);font-size:.8rem}
+.acc-areas{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acc-areas.off{opacity:.55}
+@media (max-width:760px){.acc-areas{grid-template-columns:1fr}.adm-row .adm-btns{grid-column:2;justify-self:start}}

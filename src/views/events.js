@@ -4,6 +4,7 @@ import { esc, fmt, ym, parse, iso, monthName, clock } from '../util.js';
 import { ic } from '../icons.js';
 import { eventsOn, upcomingEvents } from '../members.js';
 import { dbUpdateCard } from './checkin.js';
+import { can, isFull } from '../access.js';
 
 const timeText = e => (e.start ? clock(e.start) + (e.end ? ' – ' + clock(e.end) : '') : 'All day');
 
@@ -11,7 +12,7 @@ export function eventCard(e, compact = false) {
   const d = parse(e.date);
   return `<div class="evc"><div class="evd"><span>${d.toLocaleDateString('en-US', { month: 'short' })}</span><b>${d.getDate()}</b></div>
     <div class="evb"><b>${esc(e.title)}</b><span>${esc(fmt(e.date, { weekday: 'long' }))} · ${esc(timeText(e))}${e.location ? ' · ' + esc(e.location) : ''}</span>${!compact && e.description ? `<p>${esc(e.description)}</p>` : ''}</div>
-    ${me.admin && !compact ? `<button class="ib" data-act="editEvent" data-id="${esc(e.id)}" aria-label="Edit ${esc(e.title)}">${ic('pencil')}</button>` : ''}</div>`;
+    ${can('schedule') && !compact ? `<button class="ib" data-act="editEvent" data-id="${esc(e.id)}" aria-label="Edit ${esc(e.title)}">${ic('pencil')}</button>` : ''}</div>`;
 }
 
 export function vEvents() {
@@ -30,12 +31,12 @@ export function vEvents() {
   const list = sel ? eventsOn(sel) : upcomingEvents(8, m === ym(T.now) ? T.todayIso : m + '-01');
   const head = sel ? esc(fmt(sel, { weekday: 'long', month: 'long', day: 'numeric' })) : 'Coming up';
   return `<div class="head"><div><h1>Events</h1><p class="sub">The Mont Carmel calendar: services, prayer nights, youth, conferences.</p></div>
-      ${me.admin ? `<button class="btn cta" data-act="editEvent" data-date="${esc(sel || '')}">${ic('plus')} Add event</button>` : ''}</div>
+      ${can('schedule') ? `<button class="btn cta" data-act="editEvent" data-date="${esc(sel || '')}">${ic('plus')} Add event</button>` : ''}</div>
     <div class="ev-wrap"><div class="card cal">
       <div class="ch"><h3>${esc(monthName(m))}</h3><div class="row"><button class="btn sq" data-act="evMonth" data-k="-1" aria-label="Previous month">${ic('left')}</button><button class="btn" data-act="evMonth" data-k="0">Today</button><button class="btn sq" data-act="evMonth" data-k="1" aria-label="Next month">${ic('right')}</button></div></div>
       <div class="cal-g">${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(w => `<span class="cal-w">${w}</span>`).join('')}${grid}</div></div>
       <div class="card"><div class="ch"><h3>${head}</h3>${sel ? '<button class="btn link" data-act="evDay" data-date="">Show upcoming</button>' : ''}</div>
-        <div class="evl">${list.length ? list.map(e => eventCard(e)).join('') : `<div class="empty">${sel ? 'Nothing planned this day.' : 'No upcoming events yet.'}${me.admin ? ` <button class="btn link" data-act="editEvent" data-date="${esc(sel || '')}">${ic('plus')} Add one</button>` : ''}</div>`}</div></div></div>`;
+        <div class="evl">${list.length ? list.map(e => eventCard(e)).join('') : `<div class="empty">${sel ? 'Nothing planned this day.' : 'No upcoming events yet.'}${can('schedule') ? ` <button class="btn link" data-act="editEvent" data-date="${esc(sel || '')}">${ic('plus')} Add one</button>` : ''}</div>`}</div></div></div>`;
 }
 
 export function eventForm(id, date) {

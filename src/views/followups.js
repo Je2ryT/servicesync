@@ -7,6 +7,7 @@ import { flowList, stepsOf, flowName, stepTitle, board, isOverdue, isDueToday, d
 import { people as servingTeam, myPerson, pname } from '../domain.js';
 import { everyone } from '../people.js';
 import { dbNeeded } from './directory.js';
+import { can, isFull } from '../access.js';
 
 const initials = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
 const dueText = e => (isOverdue(e) ? t('lateDays', { n: daysLate(e) }) : isDueToday(e) ? t('dueToday') : e.due ? t('due', { d: dateText(e.due, { month: 'short', day: 'numeric' }) }) : '');
@@ -28,15 +29,15 @@ export function fuCard(e, { showStep = false, compact = false } = {}) {
 export function vFollowups() {
   if (ui.flowsMissing) return `<div><h1>${esc(t('followups'))}</h1></div>${dbNeeded('migrations/008-followups.sql')}`;
   const flows = flowList(); const L = lang();
-  if (!flows.length) return `<div><h1>${esc(t('followups'))}</h1></div><div class="card empty">${esc(t('noFlows'))} ${me.admin ? `<button class="btn link" data-act="flowEdit" data-id="">${esc(t('newFlow'))}</button>` : esc(t('noFlowsAsk'))}</div>`;
+  if (!flows.length) return `<div><h1>${esc(t('followups'))}</h1></div><div class="card empty">${esc(t('noFlows'))} ${can('followups') ? `<button class="btn link" data-act="flowEdit" data-id="">${esc(t('newFlow'))}</button>` : esc(t('noFlowsAsk'))}</div>`;
   if (!S.flows[ui.flow]) ui.flow = flows[0].id;
   const b = board(ui.flow, { mine: ui.fmine });
   return `<div class="head"><div><h1>${esc(t('followups'))}</h1><p class="sub">${esc(t('followupsSub'))}</p></div>
-      <div class="row">${me.admin ? `<button class="btn" data-act="flowEdit" data-id="${esc(ui.flow)}">${ic('pencil')} ${esc(t('editFlow'))}</button>` : ''}<button class="btn cta" data-act="fuAdd">${ic('plus')} ${esc(t('addToFlow'))}</button></div></div>
+      <div class="row">${can('followups') ? `<button class="btn" data-act="flowEdit" data-id="${esc(ui.flow)}">${ic('pencil')} ${esc(t('editFlow'))}</button>` : ''}<button class="btn cta" data-act="fuAdd">${ic('plus')} ${esc(t('addToFlow'))}</button></div></div>
     <div class="fu-bar">
       ${flows.length > 1 ? `<div class="seg">${flows.map(f => `<button data-act="flowPick" data-id="${esc(f.id)}" aria-pressed="${f.id === ui.flow}">${esc(flowName(f.id, L))}</button>`).join('')}</div>` : `<h2 class="fu-flow">${esc(flowName(ui.flow, L))}</h2>`}
       <div class="row"><span class="pill info">${esc(t('activeN', { n: b.active }))}</span>${b.overdue ? `<span class="pill bad">${esc(t('overdueN', { n: b.overdue }))}</span>` : ''}<span class="pill mute">${esc(t('doneN', { n: b.done }).toUpperCase())}</span>
-        ${myPerson() ? `<label class="chip"><input type="checkbox" data-act="fuMine" ${ui.fmine ? 'checked' : ''}> ${esc(t('onlyMine'))}</label>` : ''}${me.admin ? `<button class="btn link" data-act="flowEdit" data-id="">${ic('plus')} ${esc(t('newFlow'))}</button>` : ''}</div></div>
+        ${myPerson() ? `<label class="chip"><input type="checkbox" data-act="fuMine" ${ui.fmine ? 'checked' : ''}> ${esc(t('onlyMine'))}</label>` : ''}${can('followups') ? `<button class="btn link" data-act="flowEdit" data-id="">${ic('plus')} ${esc(t('newFlow'))}</button>` : ''}</div></div>
     <div class="board" style="--cols:${b.cols.length}">${b.cols.map((c, i) => `<section class="col"><header><span class="n">${i + 1}</span><b>${esc(stepTitle(c.step.id, L))}</b><span class="cnt">${c.items.length}</span></header>
       ${c.items.length ? c.items.map(e => fuCard(e)).join('') : `<p class="empty">${esc(t('emptyStep'))}</p>`}</section>`).join('')}</div>`;
 }
