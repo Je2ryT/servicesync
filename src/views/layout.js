@@ -21,18 +21,18 @@ const serviceTitle = (doc, svc, L) => (svc === 'ev' ? svcName(doc, svc) : tIn(L,
 const tag = (x, L) => `<span class="ltag ${esc(x.color)}">${esc(tagLabel(x, L))}</span>`;
 
 export function vLayout(doc, svc) {
-  const L = sheetLang(svc); const rows = layoutOf(doc, svc); const can = canRun(doc); const open = openCount(rows);
+  const L = sheetLang(svc); const rows = layoutOf(doc, svc); const edit = canRun(doc); const open = openCount(rows);   // `edit`, not `can`: can() is the access check
   const anyTags = rows.some(r => r.tags.length);
   const dateLong = new Date(doc.date + 'T12:00:00').toLocaleDateString(L === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const who = (r, x) => {
     const name = x.names.join(', ');
-    const screen = can
+    const screen = edit
       ? `<input type="text" class="draft lay-in noprint" data-act="layName" data-sun="${esc(doc.id)}" data-svc="${esc(svc)}" data-item="${esc(r.id)}" data-tag="${esc(x.id)}" value="${esc(x.typed ? name : '')}" placeholder="${esc(!x.typed && name ? name : t('namePh'))}" aria-label="${esc(tagLabel(x, lang()) + ' · ' + r.item)}">`
       : `<span class="lay-name noprint">${name ? esc(name) : '<span class="lay-blank"></span>'}</span>`;
-    return `<div class="lay-who">${tag(x, L)}${screen}<span class="lay-name print-only">${name ? esc(name) : '<span class="lay-blank"></span>'}</span>${!x.typed && x.fromSchedule && can ? `<small class="noprint">${esc(t('fromSchedule'))}</small>` : ''}</div>`;
+    return `<div class="lay-who">${tag(x, L)}${screen}<span class="lay-name print-only">${name ? esc(name) : '<span class="lay-blank"></span>'}</span>${!x.typed && x.fromSchedule && edit ? `<small class="noprint">${esc(t('fromSchedule'))}</small>` : ''}</div>`;
   };
   return `<div class="head noprint"><div><button class="btn link" data-act="layBack">${ic('left')} ${esc(t('allServices'))}</button><h1>${esc(t('serviceLayout'))}</h1>
-      <p class="sub">${esc(t('layoutSub'))}${can ? ' ' + esc(t('layoutEditHint')) : ''}</p></div>
+      <p class="sub">${esc(t('layoutSub'))}${edit ? ' ' + esc(t('layoutEditHint')) : ''}</p></div>
       <div class="row">${open ? `<span class="pill warn">${esc(t('layoutOpen', { n: open }))}</span>` : anyTags ? `<span class="pill ok">${esc(t('layoutFull'))}</span>` : ''}<button class="btn cta" data-act="layPrint">${ic('printer')} ${esc(t('printLayout'))}</button></div></div>
     ${anyTags ? '' : `<div class="card empty noprint">${esc(t('noPlaceholders'))} ${can('templates') ? `<button class="btn link" data-act="tab" data-tab="templates">${esc(t('openTemplates'))}</button>` : ''}</div>`}
     <article class="card lay-sheet" lang="${L}">

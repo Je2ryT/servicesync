@@ -30,6 +30,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 012 | `012-admin-permissions.sql` | Different access for each administrator (including Live service for the timer) | Everyone who is an administrator today keeps full access; narrow it on People → Administrators afterwards. |
 | 013 | `013-volunteers-from-members.sql` | Add volunteers from the members list | A member added to the serving team is linked to their existing record instead of creating a second one. |
 | 014 | `014-hide-admin-list.sql` | Only full administrators see who the administrators are | Others see only their own access. |
+| 015 | `015-event-services.sql` | Calendar events linked to their service plan and printable layout | Until it runs, the calendar still links Sundays and special services to their layouts; only “Plan it as a service” waits for it. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -102,6 +103,11 @@ Everyone in check-in and the People list is a member. To make one of them a volu
 - Or, editing a position on **Teams & positions**, press **Add someone from the members list**; that position comes pre-ticked.
 
 The new serving-team card is linked to the member's record (attendance, notes, follow-ups stay together); it never creates a duplicate. Members already on the serving team are greyed out in the list, and their profile shows **On the serving team**. This needs the Schedule & teams area (or full access).
+
+### From the Events calendar
+
+Every service on the calendar links to its layout. Click a Sunday to see its English and French services, each with **Service layout** and **Live**. Special services from the Schedule (Christmas Eve, a conference) appear on the calendar with the same buttons.
+For an event such as a prayer night, open it, tick **Plan it as a service** and pick its order of service. The event gets a serving team, live timer, report and printable layout, kept on the Schedule like a special event. Changing the event's date, title or time updates its service. Untick to unlink it; the service stays on the Schedule.
 
 ## Attendance & people reports
 
