@@ -1,7 +1,7 @@
 /* Database access: loading everything, saving, and live updates. */
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
-import { S, ui, setState } from './state.js';
+import { S, ui, me, setState } from './state.js';
 import { toast } from './ui.js';
 import { clock, timerRow, timerKey } from './timer.js';
 import { logRow } from './activity.js';
@@ -63,8 +63,10 @@ export async function loadAll() {
   const events = {}; rows('events').forEach(r => { events[r.id] = { title: r.title, date: r.date, start: r.start_time || '', end: r.end_time || '', location: r.location || '', description: r.description || '' }; });
   ui.reportsMissing = !!by.service_reports.error;   // migration 004 not run yet
   const reports = {}; rows('service_reports').forEach(r => { reports[r.sunday_id + '|' + r.svc] = reportRow(r); });
-  const admins = {}; rows('admins').forEach(r => { admins[String(r.email).toLowerCase()] = { by: r.added_by || '', at: r.added_at ? Date.parse(r.added_at) : null }; });   // only administrators can read this list
+  ui.permsMissing = rows('admins').length > 0 && !('perms' in rows('admins')[0]);   // migration 012 not run yet
+  const admins = {}; rows('admins').forEach(r => { admins[String(r.email).toLowerCase()] = { by: r.added_by || '', at: r.added_at ? Date.parse(r.added_at) : null, perms: Array.isArray(r.perms) ? r.perms : null }; });   // only administrators can read this list
   const asg = {}; rows('assignments').forEach(r => { asg[r.id] = { sunId: r.sunday_id, svc: r.svc, pos: r.position_id, person: r.person_id, status: r.status }; });
+  me.perms = me.admin ? (admins[String(me.email || '').toLowerCase()]?.perms ?? null) : [];   // null = full access (also before migration 012)
   setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events, reports, cats, families, filters, mstats, flows, steps, fentries, admins });
   ui.needsMigration = false;
   if (ui.chkDraft && !ui.chkDraft.dirty) ui.chkDraft = null;

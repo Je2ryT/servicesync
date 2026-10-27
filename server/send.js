@@ -48,7 +48,7 @@ const emailHtml = (text, unsubscribe, lang) => `<!doctype html><html><body style
 export async function handleSend({ token, input, req }, { db, env = process.env, fetch = globalThis.fetch } = {}) {
   const user = await userFromToken(token, { env, fetch });
   const role = await roleOf(db, user.email);
-  if (!role.admin && !role.coordinatorId) throw httpError(403, 'Only administrators and the serving team can send messages.');
+  if (!role.admin && !role.coordinatorId) throw httpError(403, 'Only the serving team and administrators with Messaging access can send messages.');
   const msg = parseInput(input);
 
   // Same request again (retry, double click): resume it, never start a second one.

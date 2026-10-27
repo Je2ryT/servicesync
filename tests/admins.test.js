@@ -45,8 +45,13 @@ describe('administrators', () => {
   });
 
   it('adds someone from the team, or by typing an email; checks the address first', async () => {
-    render(); $('#admPick').value = 'anna@x.com'; await H.adminAdd(); await flush();
-    expect(calls).toEqual([{ table: 'admins', op: 'insert', payload: { email: 'anna@x.com' } }]);
+    render(); $('#admPick').value = 'anna@x.com'; await H.adminAdd();
+    expect($('.modal h2').textContent).toBe('Add anna@x.com as administrator');   // choose access first
+    expect($$('.modal .accArea:checked').length).toBe(0); expect($('#accFull').checked).toBe(false);
+    $$('.modal .accArea').find(b => b.value === 'people').checked = true;
+    await H.adminAccessSave($('[data-act="adminAccessSave"]')); await flush();
+    expect(calls).toEqual([{ table: 'admins', op: 'insert', payload: { email: 'anna@x.com', perms: ['people'] } }]);
+    expect($$('.adm-row').find(r => r.textContent.includes('Anna Mukendi')).querySelector('.adm-perms').textContent).toBe('People');
     expect($$('.adm-row').length).toBe(3);
     calls.length = 0; $('#admEmail').value = 'not an email'; await H.adminAdd();
     expect($('#admMsg').textContent).toContain('not an email'); expect(calls.length).toBe(0);
@@ -60,7 +65,7 @@ describe('administrators', () => {
     await H.adminRemoveGo({ dataset: { email: 'pastor@church.org' } }); await flush();
     expect(calls).toEqual([{ table: 'admins', op: 'delete', payload: undefined, where: ['email', 'pastor@church.org'] }]);
     expect(S.admins['pastor@church.org']).toBeUndefined();
-    expect($('.adm-row button').disabled).toBe(true);   // now the only one
+    expect($('.adm-row [data-act="adminRemove"]').disabled).toBe(true);   // now the only one
     expect($('main').textContent).toContain('This is the only administrator');
   });
 
@@ -83,5 +88,35 @@ describe('administrators', () => {
     H.setLang({ dataset: { v: 'fr' } });
     expect($('main h1').textContent).toBe('Administrateurs'); expect($('.adm-row .pill.info').textContent).toBe('Vous');
     H.setLang({ dataset: { v: 'en' } });
+  });
+
+  it('full admins change someone’s areas; the last full admin keeps full access', async () => {
+    render(); H.adminAccess({ dataset: { email: 'pastor@church.org' } });
+    expect($('#accFull').checked).toBe(true); expect($('#accFull').disabled).toBe(false);
+    $('#accFull').checked = false; H.accFull($('#accFull'));
+    for (const b of $$('.modal .accArea')) b.checked = ['people', 'followups'].includes(b.value);
+    await H.adminAccessSave($('[data-act="adminAccessSave"]')); await flush();
+    expect(calls.filter(c => c.where)).toEqual([{ table: 'admins', op: 'update', payload: { perms: ['people', 'followups'] }, where: ['email', 'pastor@church.org'] }]);
+    expect(S.admins['pastor@church.org'].perms).toEqual(['people', 'followups']);
+    expect($$('.adm-row')[1].querySelector('.adm-perms').textContent).toBe('PeopleFollow-ups');
+    H.adminAccess({ dataset: { email: 'jerry@x.com' } });
+    expect($('#accFull').disabled).toBe(true);   // Jerry is now the only one with full access
+    expect($$('.adm-row')[0].querySelector('[data-act="adminRemove"]').disabled).toBe(true);
+  });
+
+  it('administrators without full access see the list but cannot change it', () => {
+    S.admins['jerry@x.com'].perms = ['people']; me.perms = ['people']; render();
+    expect($('.adm-add')).toBeNull(); expect($('main').textContent).toContain('Only administrators with full access');
+    expect($$('[data-act="adminAccess"], [data-act="adminRemove"]').length).toBe(0);
+    me.perms = null;
+  });
+
+  it('each area only shows its own controls', async () => {
+    const { can } = await import('../src/access.js');
+    me.perms = ['people']; expect([can('people'), can('schedule'), can('templates')]).toEqual([true, false, false]);
+    ui.tab = 'templates'; render(); expect($$('[data-act="tSave"]').length).toBe(0);
+    ui.tab = 'roster'; ui.psub = 'people'; render(); expect($$('[data-act="editPerson"]').length).toBe(1);   // only their own card (days off)
+    me.perms = null; render(); expect($$('[data-act="editPerson"]').length).toBeGreaterThan(1);
+    me.admin = false; me.perms = []; expect(can('people')).toBe(false);
   });
 });

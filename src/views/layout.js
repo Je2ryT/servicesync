@@ -8,6 +8,7 @@ import { svcName, allPositions, startOf, tplFor, total } from '../domain.js';
 import { clock } from '../util.js';
 import { ROLES, COLORS, tagLabel, layoutOf, openCount, positionFor } from '../layout.js';
 import { canRun } from './timer.js';
+import { can, isFull } from '../access.js';
 
 export const sheetLang = svc => (svc === 'fr' ? 'fr' : svc === 'en' ? 'en' : lang());
 /** "9:30 AM" in English, "9 h 30" in French. */
@@ -33,7 +34,7 @@ export function vLayout(doc, svc) {
   return `<div class="head noprint"><div><button class="btn link" data-act="layBack">${ic('left')} ${esc(t('allServices'))}</button><h1>${esc(t('serviceLayout'))}</h1>
       <p class="sub">${esc(t('layoutSub'))}${can ? ' ' + esc(t('layoutEditHint')) : ''}</p></div>
       <div class="row">${open ? `<span class="pill warn">${esc(t('layoutOpen', { n: open }))}</span>` : anyTags ? `<span class="pill ok">${esc(t('layoutFull'))}</span>` : ''}<button class="btn cta" data-act="layPrint">${ic('printer')} ${esc(t('printLayout'))}</button></div></div>
-    ${anyTags ? '' : `<div class="card empty noprint">${esc(t('noPlaceholders'))} ${me.admin ? `<button class="btn link" data-act="tab" data-tab="templates">${esc(t('openTemplates'))}</button>` : ''}</div>`}
+    ${anyTags ? '' : `<div class="card empty noprint">${esc(t('noPlaceholders'))} ${can('templates') ? `<button class="btn link" data-act="tab" data-tab="templates">${esc(t('openTemplates'))}</button>` : ''}</div>`}
     <article class="card lay-sheet" lang="${L}">
       <header class="lay-head"><img src="/mc-logo.png" alt="" class="lay-logo"><div><span class="lay-church">Mont Carmel</span><h2>${esc(tIn(L, 'layoutTitle'))}</h2>
         <p>${esc(serviceTitle(doc, svc, L))} · ${esc(dateLong)} · ${esc(timeIn(clock(startOf(doc, svc)), L))} – ${esc(timeIn(clock(startOf(doc, svc), total(tplFor(doc, svc))), L))}</p></div></header>

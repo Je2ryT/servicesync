@@ -5,6 +5,7 @@ import { S, ui, me } from './state.js';
 import { toE164 } from './sms.js';
 import { filterPeople } from './people.js';
 import { myPerson, asgOf, allPositions } from './domain.js';
+import { can } from './access.js';
 
 const memberOfCoord = () => { const m = {}; for (const [id, x] of Object.entries(S.members)) if (x.coordinatorId) m[x.coordinatorId] = id; return m; };
 
@@ -37,7 +38,7 @@ export function teamOf(cid = myPerson()) {
 export function audience(ids, channel) {
   let list = [...new Set(ids)].map(id => ({ id, ...S.members[id] })).filter(m => m.name && m.active !== false);
   let outside = 0;
-  if (!me.admin) { const team = teamOf(); const before = list.length; list = list.filter(m => team.has(m.id)); outside = before - list.length; }
+  if (!can('messaging')) { const team = teamOf(); const before = list.length; list = list.filter(m => team.has(m.id)); outside = before - list.length; }
   const out = { people: list, sms: [], email: [], skip: { optSms: [], noPhone: [], optEmail: [], noEmail: [] }, outside };
   for (const m of list) {
     if (channel !== 'email') { if (m.smsOptOut) out.skip.optSms.push(m); else if (!toE164(m.phone)) out.skip.noPhone.push(m); else out.sms.push(m); }

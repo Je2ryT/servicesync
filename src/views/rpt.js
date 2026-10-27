@@ -9,9 +9,10 @@ import { catName, everyone } from '../people.js';
 import { flowList, flowName } from '../flows.js';
 import { runReport, loadSchedules } from '../data.js';
 import { dbNeeded } from './directory.js';
+import { can, isFull } from '../access.js';
 
 const MAX_ROWS = 300;
-export const visibleReports = () => REPORTS.filter(r => !r.admin || me.admin);
+export const visibleReports = () => REPORTS.filter(r => !r.admin || can('messaging'));
 export const paramsOf = id => ui.rpt.params[id] || (ui.rpt.params[id] = { ...reportDef(id).params });
 export const argsOf = id => reportDef(id).args(paramsOf(id), T.todayIso);
 export const keyOf = id => id + JSON.stringify(argsOf(id));
@@ -32,7 +33,7 @@ function vList() {
   return `<div><h1>${esc(t('churchReports'))}</h1><p class="sub">${esc(t('churchReportsSub'))}</p></div>
     <div class="rpt-groups">${groups.map(([g, list]) => `<section class="card rpt-group"><div class="ch"><h3>${esc(L(GROUPS[g]))}</h3></div>
       ${list.map(r => `<button class="rpt-item" data-act="rptOpen" data-id="${r.id}"><span><b>${esc(L(r.title))}</b><small>${esc(L(r.desc))}</small></span>${ic('right')}</button>`).join('')}</section>`).join('')}</div>
-    ${me.admin ? vSchedules() : ''}`;
+    ${can('reports') ? vSchedules() : ''}`;
 }
 
 const dayNames = () => t('weekdays').split(',');
@@ -61,7 +62,7 @@ export function vReport(id) {
   const def = reportDef(id); const st = stateOf(id); const rows = st.rows || [];
   const r = 'range' in paramsOf(id) ? rangeOf(paramsOf(id).range, T.todayIso) : null;
   const head = `<div class="head"><div><button class="btn link" data-act="rptBack">${ic('left')} ${esc(t('allReports'))}</button><h1>${esc(L(def.title))}</h1><p class="sub">${esc(L(def.desc))}${r ? ` · ${esc(r.from)} → ${esc(r.to)}` : ''}</p></div>
-    <div class="row"><button class="btn" data-act="rptCsv" ${st.rows ? '' : 'disabled'}>${ic('share')} ${esc(t('downloadCsv'))}</button>${me.admin && !def.noSchedule ? `<button class="btn" data-act="rschNew">${ic('send')} ${esc(t('emailWeekly'))}</button>` : ''}</div></div>`;
+    <div class="row"><button class="btn" data-act="rptCsv" ${st.rows ? '' : 'disabled'}>${ic('share')} ${esc(t('downloadCsv'))}</button>${can('reports') && !def.noSchedule ? `<button class="btn" data-act="rschNew">${ic('send')} ${esc(t('emailWeekly'))}</button>` : ''}</div></div>`;
   let body;
   if (st.missing) body = dbNeeded('migrations/009-reports.sql');
   else if (st.idle) body = `<div class="card empty">${esc(t('choosePersonFirst'))}</div>`;
@@ -169,6 +170,6 @@ export function parseEmails(text) {
 }
 
 export function vChurchReports() {
-  if (ui.rpt.open && reportDef(ui.rpt.open) && (!reportDef(ui.rpt.open).admin || me.admin)) return vReport(ui.rpt.open);
+  if (ui.rpt.open && reportDef(ui.rpt.open) && (!reportDef(ui.rpt.open).admin || can('messaging'))) return vReport(ui.rpt.open);
   ui.rpt.open = null; return vList();
 }

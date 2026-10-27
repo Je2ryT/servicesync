@@ -12,7 +12,7 @@ import { TABS } from './config.js';
 export const S = { people: {}, teams: {}, pos: {}, quals: {}, asg: {}, sun: {}, tpl: {}, cfg: {}, chk: {}, off: {}, swap: {}, timers: {}, members: {}, att: {}, events: {}, reports: {}, cats: {}, families: {}, mstats: {}, filters: {}, flows: {}, steps: {}, fentries: {}, admins: {} };
 export function setState(next) { for (const k of Object.keys(S)) S[k] = next[k] || {}; }
 
-export const me = { email: '', admin: false, name: '' };
+export const me = { email: '', admin: false, name: '', perms: null };
 
 /* "Today", kept in one place so tests can pin it. */
 export const T = { now: new Date(), todayIso: '', thisSun: '' };

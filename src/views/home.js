@@ -6,6 +6,7 @@ import { profile, notifications, attendanceSummary, upcomingEvents } from '../me
 import { heroBlock, fairCard, timeRange } from './shared.js';
 import { eventCard } from './events.js';
 import { myFollowupsCard } from './followups.js';
+import { can, isFull } from '../access.js';
 
 /* ---------- profile ---------- */
 function profileCard() {
@@ -15,7 +16,7 @@ function profileCard() {
     <div class="prof-top"><div class="avatar" aria-hidden="true">${esc(p.initials)}</div>
       <div class="prof-id"><h2>${esc(p.name)}</h2><div class="row"><span class="pill ${p.admin ? 'info' : 'ok'}">${p.admin ? 'Administrator' : 'Serving team'}</span>${langs.map(l => `<span class="pill mute">${esc(l.toUpperCase())}</span>`).join('')}</div>
         <div class="prof-contact">${p.email ? `<span>${esc(p.email)}</span>` : ''}${p.phone ? `<span>${esc(p.phone)}</span>` : ''}</div></div>
-      ${p.id ? `<button class="btn" data-act="editPerson" data-id="${esc(p.id)}">${ic('pencil')} ${me.admin ? 'Edit profile' : 'Days off'}</button>` : ''}</div>
+      ${p.id ? `<button class="btn" data-act="editPerson" data-id="${esc(p.id)}">${ic('pencil')} ${can('schedule') ? 'Edit profile' : 'Days off'}</button>` : ''}</div>
     <div class="prof-stats">
       <div><span>Next time serving</span>${n ? `<b>${esc(fmt(n.d.date, { weekday: 'short', month: 'short', day: 'numeric' }))}</b><small>${esc(posName(n.a.pos))} · ${esc(svcName(n.d, n.a.svc))} · ${status(n.a) === 'confirmed' ? 'confirmed' : status(n.a) === 'declined' ? 'declined' : 'needs your reply'}</small>` : '<b>Not scheduled</b><small>Nothing published yet</small>'}</div>
       <div><span>This month</span><b>${p.thisMonth}</b><small>assignment${p.thisMonth === 1 ? '' : 's'}</small></div>
@@ -42,7 +43,7 @@ function eventsCard() {
   if (ui.membersMissing) return '';
   const list = upcomingEvents(3);
   return `<section class="card"><div class="ch"><h3>${ic('cal')} Upcoming events</h3><button class="btn" data-act="tab" data-tab="events">Calendar</button></div>
-    <div class="evl">${list.length ? list.map(e => eventCard(e, true)).join('') : `<div class="empty">Nothing planned yet.${me.admin ? ' <button class="btn link" data-act="editEvent">Add an event</button>' : ''}</div>`}</div></section>`;
+    <div class="evl">${list.length ? list.map(e => eventCard(e, true)).join('') : `<div class="empty">Nothing planned yet.${can('schedule') ? ' <button class="btn link" data-act="editEvent">Add an event</button>' : ''}</div>`}</div></section>`;
 }
 
 /* ---------- serving team ---------- */
@@ -82,5 +83,5 @@ export function vHome() {
       <div class="dash-main">${profileCard()}${heroBlock()}${myAssignments(p)}</div>
       <div class="dash-side">${notifCard()}${myFollowupsCard()}${checkinCard()}${eventsCard()}</div>
     </div>
-    ${me.admin ? adminBlock() : ''}`;
+    ${can('schedule') ? adminBlock() : ''}`;
 }
