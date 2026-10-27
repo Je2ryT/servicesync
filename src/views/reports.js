@@ -5,6 +5,7 @@ import { ic } from '../icons.js';
 import { docs, docOf, visible, svcKeys, svcName, tplFor, startOf, asgOf, pname, posName, status, allPositions } from '../domain.js';
 import { timerOf, minutes } from '../timer.js';
 import { attendanceFor, mname } from '../members.js';
+import { isVisitor } from '../people.js';
 import { canRun } from './timer.js';
 import { timeRange } from './shared.js';
 import { vActivity, actState } from './activity.js';
@@ -27,7 +28,7 @@ export function reportSegments(doc, svc) {
 /** Totals for the strip at the top and the list. */
 export function reportStats(doc, svc) {
   const att = attendanceFor(doc.date, svc); const t = timerOf(doc.id, svc); const rep = reportOf(doc.id, svc);
-  const newcomers = att.filter(a => S.members[a.member]?.status === 'newcomer').length;
+  const newcomers = att.filter(a => S.members[a.member] && isVisitor(S.members[a.member])).length;
   let ran = null;
   if (t?.endedAt && t.startedAt) { const total = t.items.reduce((a, o) => a + (+o.min || 0) * 60, 0); const actual = (t.endedAt - t.startedAt) / 1000; ran = { actual, diff: Math.round((actual - total) / 60) }; }
   const notes = Object.keys(rep.notes).length + (rep.summary ? 1 : 0) + (rep.followups ? 1 : 0);

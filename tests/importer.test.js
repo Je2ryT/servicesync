@@ -44,7 +44,7 @@ describe('reading an Elvanto export', () => {
     const rows = parseCsv(ELVANTO); const map = detectColumns(rows[0]);
     const p = planImport(rows.slice(1), map, { lang: 'fr', status: 'member' }, [{ name: 'Anna M.', email: 'anna@montcarmel.org', phone: '' }]);
     expect(p.add.map(m => m.name)).toEqual(['Josué Kabila', 'Bea Ilunga', 'Paul "PJ" Mbala, Jr.']);
-    expect(p.add[0]).toEqual({ name: 'Josué Kabila', email: 'josue@example.com', phone: '(704) 555-0101', household: 'Kabila Family', status: 'member', lang: 'fr' });
+    expect(p.add[0]).toMatchObject({ name: 'Josué Kabila', first_name: 'Josué', last_name: 'Kabila', email: 'josue@example.com', phone: '(704) 555-0101', household: 'Kabila Family', status: 'member', category_id: 'congregation', lang: 'fr' });
     expect(p.add[1]).toMatchObject({ phone: '704-555-0102', status: 'regular', email: null });
     expect(p.add[2].status).toBe('visitor');
     expect(p.dup.map(d => [d.name, d.why])).toEqual([['Anna Mukendi', 'same email'], ['Josué Kabila', 'same email']]);

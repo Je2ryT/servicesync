@@ -3,6 +3,7 @@
 import { S, T, me } from './state.js';
 import { ym, iso, fmt, toMin, clock } from './util.js';
 import { myPerson, assignments, docOf, status, warnings, svcName, posName } from './domain.js';
+import { isVisitor } from './people.js';
 
 /* ---------- members ---------- */
 export const STATUS = { member: 'Member', regular: 'Regular attender', newcomer: 'Newcomer', visitor: 'Visitor' };
@@ -32,7 +33,7 @@ export function attendanceSummary(date) {
   const by = { en: 0, fr: 0, ev: 0 }; let newcomers = 0; const seen = new Set();
   for (const a of attendanceFor(date)) {
     by[a.svc]++;
-    if (!seen.has(a.member) && S.members[a.member]?.status === 'newcomer') newcomers++;
+    if (!seen.has(a.member) && S.members[a.member] && isVisitor(S.members[a.member])) newcomers++;
     seen.add(a.member);
   }
   return { ...by, total: by.en + by.fr + by.ev, people: seen.size, newcomers };
@@ -80,7 +81,7 @@ export function notifications() {
     const w = warnings().length;
     if (w) out.push({ kind: 'warn', icon: 'alert', text: `${w} coverage issue${w === 1 ? '' : 's'} in the next two months`, act: 'tab', data: 'calendar' });
     const weekAgo = new Date(T.now); weekAgo.setDate(weekAgo.getDate() - 7);
-    const fresh = Object.values(S.members).filter(m => m.status === 'newcomer' && m.createdAt >= weekAgo.getTime()).length;
+    const fresh = Object.values(S.members).filter(m => isVisitor(m) && m.createdAt >= weekAgo.getTime()).length;
     if (fresh) out.push({ kind: 'info', icon: 'users', text: `${fresh} newcomer${fresh === 1 ? '' : 's'} this week to follow up`, act: 'tab', data: 'checkin' });
   }
   const soon = new Date(T.now); soon.setDate(soon.getDate() + 7); const end = iso(soon);

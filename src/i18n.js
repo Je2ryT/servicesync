@@ -1,0 +1,88 @@
+/* English / French for the newer screens (People, profiles, messages, follow-ups, reports).
+   The language is remembered per device; the EN | FR switch sits in the header. */
+import { ui } from './state.js';
+
+const D = {
+  en: {
+    // people list
+    people: 'People', everyone: 'Everyone', servingTeam: 'Serving team', teamsPositions: 'Teams & positions',
+    peopleSub: '{n} people in the church directory', search: 'Search by name, phone or email',
+    category: 'Category', allCategories: 'All categories', language: 'Language', anyLanguage: 'Any language',
+    service: 'Service', anyService: 'Any service', english: 'English', french: 'French', both: 'Both',
+    attendedEn: 'Comes to English', attendedFr: 'Comes to French',
+    lastAttended: 'Last attended', anyTime: 'Any time', within2w: 'In the last 2 weeks', within1m: 'In the last month', within3m: 'In the last 3 months',
+    notIn1m: 'Not in the last month', notIn3m: 'Not in the last 3 months', never: 'Never checked in',
+    phone: 'Phone', email: 'Email', hasPhone: 'Has a phone', noPhone: 'No phone', hasEmail: 'Has an email', noEmail: 'No email', any: 'Any',
+    clear: 'Clear filters', savedFilters: 'Saved filters', saveFilter: 'Save filter', filterName: 'Name this filter', shareFilter: 'Share with the serving team',
+    deleteFilter: 'Delete', mine: 'Mine', shared: 'Shared',
+    shown: '{n} shown', selected: '{n} selected', selectAll: 'Select all shown', clearSelection: 'Clear selection',
+    exportCsv: 'Export CSV', setCategory: 'Set category…', addPerson: 'Add person', categories: 'Categories',
+    noMatch: 'Nobody matches these filters.', noPeople: 'No people yet. Import them from Elvanto on Check-in, or add someone.',
+    lastSeen: 'Last here {d}', neverSeen: 'Not checked in yet', family: 'Family',
+    // profile
+    back: 'People', details: 'Details', edit: 'Edit', firstName: 'First name', lastName: 'Last name', gender: 'Gender', male: 'Male', female: 'Female',
+    birthday: 'Birthday', age: '{n} years old', address: 'Address', role: 'Role in family', adult: 'Adult', child: 'Child',
+    noFamily: 'Not in a family yet', newFamily: 'New family…', familyName: 'Family name', familyMembers: 'Family',
+    smsOptOut: 'No text messages', emailOptOut: 'No emails', optedOut: 'Opted out', contactPrefs: 'Contact',
+    categoryHistory: 'Category history', setBy: 'by {who}', fromTo: '{from} → {to}', joined: 'Added as {to}',
+    notes: 'Notes', addNote: 'Add a note', notePh: 'A call, a visit, a prayer request…', save: 'Save', cancel: 'Cancel', remove: 'Remove', del: 'Delete',
+    noNotes: 'No notes yet.', attendance: 'Attendance', visits: '{n} visits', visits1: '1 visit', firstVisit: 'First visit {d}', noAttendance: 'No check-ins yet.',
+    servesAs: 'Serves as', upcoming: 'Upcoming', notServing: 'Not on the serving team.', nothingScheduled: 'Nothing scheduled.',
+    loading: 'Loading…', unknown: '—', saved: 'Saved', tapAgain: 'Tap again to confirm', confirmed: 'Confirmed', declined: 'Declined', awaiting: 'Awaiting reply',
+    // categories editor
+    catEditor: 'Categories', catEditorSub: 'Rename, reorder or add categories. A category in use can be hidden, not deleted.',
+    nameEn: 'Name (English)', nameFr: 'Name (French)', hidden: 'Hidden', addCategory: 'Add category', inUse: '{n} people', inUse1: '1 person',
+    // import
+    familiesToCreate: '{n} new families',
+    dbUpdate: 'This needs a database update. Run {file} in Supabase, then reload.',
+  },
+  fr: {
+    people: 'Personnes', everyone: 'Tout le monde', servingTeam: 'Équipe de service', teamsPositions: 'Équipes et postes',
+    peopleSub: '{n} personnes dans l’annuaire de l’église', search: 'Rechercher par nom, téléphone ou courriel',
+    category: 'Catégorie', allCategories: 'Toutes les catégories', language: 'Langue', anyLanguage: 'Toutes les langues',
+    service: 'Culte', anyService: 'Tous les cultes', english: 'Anglais', french: 'Français', both: 'Les deux',
+    attendedEn: 'Vient au culte anglais', attendedFr: 'Vient au culte français',
+    lastAttended: 'Dernière présence', anyTime: 'N’importe quand', within2w: 'Ces 2 dernières semaines', within1m: 'Ce dernier mois', within3m: 'Ces 3 derniers mois',
+    notIn1m: 'Pas depuis un mois', notIn3m: 'Pas depuis 3 mois', never: 'Jamais enregistré',
+    phone: 'Téléphone', email: 'Courriel', hasPhone: 'A un téléphone', noPhone: 'Sans téléphone', hasEmail: 'A un courriel', noEmail: 'Sans courriel', any: 'Tous',
+    clear: 'Effacer les filtres', savedFilters: 'Filtres enregistrés', saveFilter: 'Enregistrer le filtre', filterName: 'Nom du filtre', shareFilter: 'Partager avec l’équipe de service',
+    deleteFilter: 'Supprimer', mine: 'Les miens', shared: 'Partagés',
+    shown: '{n} affichés', selected: '{n} sélectionnés', selectAll: 'Tout sélectionner', clearSelection: 'Désélectionner',
+    exportCsv: 'Exporter en CSV', setCategory: 'Changer la catégorie…', addPerson: 'Ajouter une personne', categories: 'Catégories',
+    noMatch: 'Personne ne correspond à ces filtres.', noPeople: 'Personne pour l’instant. Importez-les depuis Elvanto dans l’onglet Check-in, ou ajoutez quelqu’un.',
+    lastSeen: 'Dernière présence {d}', neverSeen: 'Pas encore enregistré', family: 'Famille',
+    back: 'Personnes', details: 'Informations', edit: 'Modifier', firstName: 'Prénom', lastName: 'Nom', gender: 'Sexe', male: 'Homme', female: 'Femme',
+    birthday: 'Date de naissance', age: '{n} ans', address: 'Adresse', role: 'Rôle dans la famille', adult: 'Adulte', child: 'Enfant',
+    noFamily: 'Pas encore dans une famille', newFamily: 'Nouvelle famille…', familyName: 'Nom de la famille', familyMembers: 'Famille',
+    smsOptOut: 'Pas de SMS', emailOptOut: 'Pas de courriels', optedOut: 'Désabonné', contactPrefs: 'Contact',
+    categoryHistory: 'Historique des catégories', setBy: 'par {who}', fromTo: '{from} → {to}', joined: 'Ajouté comme {to}',
+    notes: 'Notes', addNote: 'Ajouter une note', notePh: 'Un appel, une visite, un sujet de prière…', save: 'Enregistrer', cancel: 'Annuler', remove: 'Retirer', del: 'Supprimer',
+    noNotes: 'Pas encore de notes.', attendance: 'Présence', visits: '{n} présences', visits1: '1 présence', firstVisit: 'Première visite le {d}', noAttendance: 'Aucune présence enregistrée.',
+    servesAs: 'Sert comme', upcoming: 'À venir', notServing: 'Ne fait pas partie de l’équipe de service.', nothingScheduled: 'Rien de prévu.',
+    loading: 'Chargement…', unknown: '—', saved: 'Enregistré', tapAgain: 'Touchez encore pour confirmer', confirmed: 'Confirmé', declined: 'Refusé', awaiting: 'En attente',
+    catEditor: 'Catégories', catEditorSub: 'Renommez, réordonnez ou ajoutez des catégories. Une catégorie utilisée peut être masquée, pas supprimée.',
+    nameEn: 'Nom (anglais)', nameFr: 'Nom (français)', hidden: 'Masquée', addCategory: 'Ajouter une catégorie', inUse: '{n} personnes', inUse1: '1 personne',
+    familiesToCreate: '{n} nouvelles familles',
+    dbUpdate: 'Une mise à jour de la base de données est nécessaire. Exécutez {file} dans Supabase, puis rechargez.',
+  },
+};
+
+export const LANGS = ['en', 'fr'];
+export const lang = () => (ui.lang === 'fr' ? 'fr' : 'en');
+export const locale = () => (lang() === 'fr' ? 'fr-FR' : 'en-US');
+
+/** Translate a key, filling {placeholders}. Falls back to English, then the key itself. */
+export function t(key, vars = {}) {
+  if (vars.n === 1 && (D[lang()][key + '1'] ?? D.en[key + '1'])) key += '1';   // singular forms: "1 person"
+  const s = D[lang()][key] ?? D.en[key] ?? key;
+  return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
+}
+export const hasKey = key => key in D.en;
+export const keys = l => Object.keys(D[l]);
+
+/** A date in the current language: "Nov 1, 2026" / "1 nov. 2026". */
+export const dateText = (isoDate, opts = { month: 'short', day: 'numeric', year: 'numeric' }) => {
+  if (!isoDate) return '';
+  const [y, m, d] = String(isoDate).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(locale(), opts);
+};
