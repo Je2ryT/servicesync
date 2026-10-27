@@ -17,11 +17,11 @@ export const TABS = [['home', 'Home'], ['checkin', 'Check-in'], ['events', 'Even
 
 export const DEFAULT_TPL = {
   'tpl-en': { name: 'English Sunday Service', lang: 'en', order: [
-    { id: 'e1', item: 'Welcome & announcements', min: 5 }, { id: 'e2', item: 'Praise & worship', min: 25 }, { id: 'e3', item: 'Opening prayer', min: 5 },
-    { id: 'e4', item: 'Offering', min: 10 }, { id: 'e5', item: 'Sermon', min: 45 }, { id: 'e6', item: 'Altar call & closing prayer', min: 10 }, { id: 'e7', item: 'Benediction', min: 5 }] },
+    { id: 'e1', item: 'Welcome & announcements', min: 5, roles: [{ id: 'r1', role: 'moderator', color: 'yellow' }] }, { id: 'e2', item: 'Praise & worship', min: 25, roles: [{ id: 'r1', role: 'choir', color: 'blue' }] }, { id: 'e3', item: 'Opening prayer', min: 5 },
+    { id: 'e4', item: 'Offering', min: 10 }, { id: 'e5', item: 'Sermon', min: 45, roles: [{ id: 'r1', role: 'pastor', color: 'blue' }, { id: 'r2', role: 'interpreter', color: 'white' }] }, { id: 'e6', item: 'Altar call & closing prayer', min: 10 }, { id: 'e7', item: 'Benediction', min: 5 }] },
   'tpl-fr': { name: 'Culte en français', lang: 'fr', order: [
-    { id: 'f1', item: 'Accueil et annonces', min: 10 }, { id: 'f2', item: 'Louange et adoration', min: 30 }, { id: 'f3', item: "Prière d'intercession", min: 10 },
-    { id: 'f4', item: 'Offrandes', min: 10 }, { id: 'f5', item: 'Prédication', min: 60 }, { id: 'f6', item: 'Appel et prière finale', min: 10 }, { id: 'f7', item: 'Bénédiction', min: 5 }] },
+    { id: 'f1', item: 'Accueil et annonces', min: 10, roles: [{ id: 'r1', role: 'moderator', color: 'yellow' }] }, { id: 'f2', item: 'Louange et adoration', min: 30, roles: [{ id: 'r1', role: 'choir', color: 'blue' }] }, { id: 'f3', item: "Prière d'intercession", min: 10 },
+    { id: 'f4', item: 'Offrandes', min: 10 }, { id: 'f5', item: 'Prédication', min: 60, roles: [{ id: 'r1', role: 'pastor', color: 'blue' }, { id: 'r2', role: 'interpreter', color: 'white' }] }, { id: 'f6', item: 'Appel et prière finale', min: 10 }, { id: 'f7', item: 'Bénédiction', min: 5 }] },
 };
 
 export const DEFAULT_CHECK = [

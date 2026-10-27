@@ -30,6 +30,8 @@ import { fold } from './members.js';
 import { timeRange } from './views/shared.js';
 import { reportDef, reportCsv, csvName } from './reportdefs.js';
 import { removeForm } from './views/admins.js';
+import { placeholderForm } from './views/layout.js';
+import { tagsOf, ROLES } from './layout.js';
 import { keyOf, ctx as rptCtx, flowPickForm, scheduleForm, parseEmails } from './views/rpt.js';
 
 /* ---------- helpers ---------- */
@@ -48,6 +50,14 @@ function shareText() {
   lines.push('', location.origin); return lines.join('\n');
 }
 function draftOf(tid) { if (!ui.drafts[tid]) ui.drafts[tid] = structuredClone(templates()[tid]); return ui.drafts[tid]; }
+/** Copy the placeholder editor's fields back into ui.phDraft (before re-drawing it). */
+function readPh() {
+  const p = ui.phDraft; if (!p) return;
+  p.list.forEach((x, i) => {
+    const f = k => document.querySelector(`.modal [data-f="${k}"][data-i="${i}"]${k === 'color' ? ':checked' : ''}`);
+    x.prevRole = x.role; x.role = f('role')?.value || x.role; x.label = (f('label')?.value ?? x.label).trim().slice(0, 40); x.color = f('color')?.value || x.color; x.pos = f('pos')?.value ?? x.pos;
+  });
+}
 async function seedTemplates(except) {
   if (Object.keys(S.tpl).length) return;
   const rows = Object.entries(templates()).filter(([id]) => id !== except).map(([id, t]) => ({ id, name: t.name, lang: t.lang, items: t.order }));
@@ -425,6 +435,30 @@ export const H = {
     ui.catDraft = null; reload(); toast(t('saved'));
   },
 
+  /* service layout */
+  openLayout(el) { ui.layout = el.dataset.id + '|' + el.dataset.svc; ui.tab = 'reports'; ui.rsub = 'reports'; render(); window.scrollTo(0, 0); },
+  layBack() { ui.layout = null; render(); window.scrollTo(0, 0); },
+  layPrint() { window.print(); },
+  async layName(el) {
+    const d = el.dataset; const key = d.sun + '|' + d.svc; const name = el.value.trim();
+    const { data, error } = await sb.rpc('save_layout', { p_sunday: d.sun, p_svc: d.svc, p_item: d.item, p_tag: d.tag, p_name: name });
+    if (error) { toast(/save_layout|PGRST202|42883/.test(error.message + error.code) ? t('dbUpdate', { file: 'migrations/011-service-layout.sql' }) : t('layoutSaveFail') + ' ' + error.message); return; }
+    const r = S.reports[key] || (S.reports[key] = { notes: {}, summary: '', followups: '', layout: {} });
+    r.layout = data?.layout || r.layout; render();
+  },
+  phEdit(el) {
+    const d = draftOf(el.dataset.tid); const o = d.order.find(x => x.id === el.dataset.id); if (!o) return;
+    ui.phDraft = { tid: el.dataset.tid, itemId: o.id, item: o.item, list: tagsOf(o) }; modal(placeholderForm());
+  },
+  phRole(el) { readPh(); const x = ui.phDraft.list[+el.dataset.i]; if (x.color === ROLES[x.prevRole || 'other']?.color) x.color = ROLES[x.role].color; modal(placeholderForm()); },
+  phAdd() { readPh(); const used = new Set(ui.phDraft.list.map(x => x.id)); let n = 1; while (used.has('r' + n)) n++; ui.phDraft.list.push({ id: 'r' + n, role: 'pastor', label: '', color: ROLES.pastor.color, pos: '' }); modal(placeholderForm()); },
+  phDel(el) { readPh(); ui.phDraft.list.splice(+el.dataset.i, 1); modal(placeholderForm()); },
+  phSave() {
+    readPh(); const p = ui.phDraft; const d = draftOf(p.tid); const o = d.order.find(x => x.id === p.itemId);
+    if (o) o.roles = p.list.filter(x => x.role !== 'other' || x.label).map(({ id, role, label, color, pos }) => ({ id, role, label: role === 'other' ? label : '', color, pos }));
+    ui.phDraft = null; closeModal(); render();
+  },
+
   /* administrators */
   async adminAdd() {
     if (!me.admin) return;
@@ -629,7 +663,7 @@ export const H = {
   oAdd(el) { const d = draftOf(el.dataset.tid); const id = 'i' + uid(); d.order.push({ id, item: '', min: 5 }); render(); document.getElementById(`ti-${el.dataset.tid}-${id}`)?.focus(); },
   async tSave(el) {
     const tid = el.dataset.tid; const d = draftOf(tid); await seedTemplates(tid);
-    const row = { id: tid, name: d.name.trim() || 'Untitled template', lang: d.lang, items: d.order.filter(o => o.item.trim()).map(o => ({ id: o.id, item: o.item.trim(), min: +o.min || 0 })) };
+    const row = { id: tid, name: d.name.trim() || 'Untitled template', lang: d.lang, items: d.order.filter(o => o.item.trim()).map(o => ({ id: o.id, item: o.item.trim(), min: +o.min || 0, ...(tagsOf(o).length ? { roles: tagsOf(o).map(({ id, role, label, color, pos }) => ({ id, role, color, ...(label ? { label } : {}), ...(pos ? { pos } : {}) })) } : {}) })) };
     if (await q(sb.from('templates').upsert(row))) { delete ui.drafts[tid]; toast(`${row.name} saved.`); reload(); }
   },
   async tDel(el) {
@@ -660,6 +694,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll', 'layName', 'phRole']);
 export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
 export { TABS, ic };
