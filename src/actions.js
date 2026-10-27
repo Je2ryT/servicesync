@@ -30,6 +30,7 @@ import { fold, searchMembers } from './members.js';
 import { timeRange } from './views/shared.js';
 import { reportDef, reportCsv, csvName } from './reportdefs.js';
 import { removeForm, accessForm } from './views/admins.js';
+import { layoutPicker, readPicker, pickerError, storedValue, newLayoutItems, langOfNew, SUNDAY, FRENCH } from './views/layoutpick.js';
 import { placeholderForm } from './views/layout.js';
 import { tagsOf, ROLES } from './layout.js';
 import { keyOf, ctx as rptCtx, flowPickForm, scheduleForm, parseEmails } from './views/rpt.js';
@@ -73,6 +74,18 @@ function readPh() {
     const f = k => document.querySelector(`.modal [data-f="${k}"][data-i="${i}"]${k === 'color' ? ':checked' : ''}`);
     x.prevRole = x.role; x.role = f('role')?.value || x.role; x.label = (f('label')?.value ?? x.label).trim().slice(0, 40); x.color = f('color')?.value || x.color; x.pos = f('pos')?.value ?? x.pos;
   });
+}
+/** Turn a layout-picker reading into the value stored on a service, creating a new layout if asked. */
+async function applyPicker(c) {
+  if (c.mode === 'custom' && c.tpl === '__new') {
+    await seedTemplates(); const id = 'tpl-' + uid();
+    const ok = await q(sb.from('templates').insert({ id, name: c.newName, lang: langOfNew(c.from), items: newLayoutItems(c.from) }));
+    if (!ok) return null;
+    S.tpl[id] = { name: c.newName, lang: langOfNew(c.from), order: newLayoutItems(c.from) };
+    toast(t('lpCreated', { name: c.newName }));
+    return id;
+  }
+  return storedValue(c);
 }
 async function seedTemplates(except) {
   if (Object.keys(S.tpl).length) return;
@@ -205,13 +218,14 @@ export const H = {
     try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
   },
   newEvent() {
-    const t = templates();
-    modal(`<h2>Add special event</h2><label class="f">Event name<input type="text" id="evTitle" placeholder="Christmas Eve service"></label><label class="f">Date<input type="date" id="evDate" value="${esc(sundaysOf(ui.month)[0])}"></label><label class="f">Start time<input type="time" id="evTime" value="18:00"></label><label class="f">Order of service<select id="evTpl">${Object.entries(t).map(([id, x]) => `<option value="${esc(id)}">${esc(x.name)}</option>`).join('')}</select></label><div class="row"><button class="btn cta" data-act="saveEvent">Add event</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>`);
+    modal(`<h2>Add special event</h2><label class="f">Event name<input type="text" id="evTitle" placeholder="Christmas Eve service"></label><label class="f">Date<input type="date" id="evDate" value="${esc(sundaysOf(ui.month)[0])}"></label><label class="f">Start time<input type="time" id="evTime" value="18:00"></label>${layoutPicker('sp', SUNDAY)}<div class="row"><button class="btn cta" data-act="saveEvent">Add event</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>`);
   },
   async saveEvent() {
-    const title = val('evTitle').trim(), date = val('evDate'), start = val('evTime') || '18:00', tpl = val('evTpl');
+    const title = val('evTitle').trim(), date = val('evDate'), start = val('evTime') || '18:00'; const c = readPicker('sp');
     if (!title || !date) { toast('Give the event a name and a date.'); return; }
+    if (pickerError(c)) { toast(t(pickerError(c))); return; }
     closeModal();
+    const tpl = await applyPicker(c); if (tpl == null) return;
     if (await saveSun(date + '-ev-' + uid(), { date, title, special: true, published: false, services: { ev: { start, tpl } } })) { ui.month = date.slice(0, 7); toast(`Added ${title}.`); }
   },
   delEvent(el) { modal(`<h2>Remove this event?</h2><p class="sub">Its assignments and checklist progress go with it.</p><div class="row"><button class="btn cta" data-act="delEventYes" data-id="${esc(el.dataset.id)}">Remove</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>`); },
@@ -479,6 +493,26 @@ export const H = {
     ui.catDraft = null; reload(); toast(t('saved'));
   },
 
+  /* layout picker */
+  lpMode(el) { const box = document.getElementById(el.dataset.p + 'Lp'); if (box) box.dataset.mode = el.value; },
+  lpTpl(el) { const box = document.getElementById(el.dataset.p + 'Lp'); if (box) box.dataset.new = el.value === '__new' ? '1' : ''; },
+  layChange(el) {
+    const doc = docOf(el.dataset.id); const svc = el.dataset.svc; if (!doc || !can('schedule')) return;
+    const cur = doc.services?.[svc]?.tpl || (svc === 'fr' ? FRENCH : SUNDAY);
+    modal(`<h2>${esc(t('layoutFor', { name: svcName(doc, svc) }))}</h2><p class="sub" style="margin:0">${esc(fmt(doc.date, { weekday: 'long', month: 'long', day: 'numeric' }))}</p>
+      ${layoutPicker('svc', cur, { newName: doc.special ? doc.title || '' : '' })}<p class="sub" style="margin:0">${esc(t('layoutChangeNote'))}</p>
+      <div class="row"><button class="btn cta" data-act="layChangeGo" data-id="${esc(doc.id)}" data-svc="${esc(svc)}">${esc(t('save'))}</button><button class="btn ghost" data-act="closeModal">${esc(t('cancel'))}</button></div>`);
+  },
+  async layChangeGo(el) {
+    const c = readPicker('svc'); if (pickerError(c)) { toast(t(pickerError(c))); return; }
+    const { id, svc } = el.dataset; closeModal();
+    const tpl = await applyPicker(c); if (tpl == null) return;
+    const old = S.sun[id]; const services = { ...(old.services || {}) };
+    services[svc] = { ...(services[svc] || {}), tpl };
+    if (await saveSun(id, { ...old, services })) { S.sun[id] = { ...old, services }; render(); toast(t('saved')); }
+  },
+  layEdit(el) { ui.tplFocus = el.dataset.tpl; ui.tab = 'templates'; ui.tsub = 'order'; ui.layout = null; render(); setTimeout(() => document.getElementById('tpl-card-' + el.dataset.tpl)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50); },
+
   /* service layout */
   openLayout(el) { ui.layoutFrom = ui.tab === 'reports' ? null : ui.tab; ui.layout = el.dataset.id + '|' + el.dataset.svc; ui.tab = 'reports'; ui.rsub = 'reports'; render(); window.scrollTo(0, 0); },
   layBack() { ui.layout = null; if (ui.layoutFrom) { ui.tab = ui.layoutFrom; ui.layoutFrom = null; } render(); window.scrollTo(0, 0); },
@@ -659,12 +693,15 @@ export const H = {
     const start = val('eStart'), end = val('eEnd');
     if (start && end && end <= start) { toast('The end time has to be after the start.'); return; }
     const row = { title, date, start_time: start || null, end_time: end || null, location: val('eLoc').trim() || null, description: val('eDesc').trim() || null };
-    const plan = !!document.getElementById('ePlan')?.checked; const tpl = val('eTpl');   // read before the form closes
+    const pick = document.getElementById('evLp') ? readPicker('ev') : { mode: 'none' };   // read before the form closes
+    if (pickerError(pick)) { toast(t(pickerError(pick))); return; }
+    const plan = pick.mode !== 'none';
     const id = el.dataset.id; closeModal();
     const saved = id ? await q(sb.from('events').update(row).eq('id', id).select('id').single()) : await q(sb.from('events').insert({ ...row, created_by: myPerson() }).select('id').single());
     if (!saved) return;
     const eid = id || saved.id; const linked = id && S.events[id]?.serviceId && S.sun[S.events[id].serviceId] ? S.events[id].serviceId : null;
-    if (plan && !ui.eventLinkMissing) {
+    const tpl = plan ? await applyPicker(pick) : null;
+    if (plan && tpl != null && !ui.eventLinkMissing) {
       // keep the event's service (a special event in the schedule) in step with the event
       const sid = linked || date + '-ev-' + uid(); const old = S.sun[sid] || { published: false };
       const ok = await saveSun(sid, { ...old, date, title, special: true, services: { ev: { ...(old.services?.ev || {}), start: start || '18:00', tpl } } });
@@ -739,6 +776,8 @@ export const H = {
   },
   async tDel(el) {
     const tid = el.dataset.tid; const c = cfg(); if (c.enTpl === tid || c.frTpl === tid) { toast('This template is in use. Pick another one for that service first.'); return; }
+    const using = docs().filter(d => d.date >= T.todayIso && Object.values(d.services || {}).some(x => x?.tpl === tid));
+    if (using.length) { toast(t('layoutInUse', { name: using[0].special ? using[0].title || using[0].date : fmt(using[0].date, { month: 'short', day: 'numeric' }), n: using.length })); return; }
     await seedTemplates(tid); delete ui.drafts[tid]; if (await q(sb.from('templates').delete().eq('id', tid))) reload();
   },
   async tNew() { await seedTemplates(); if (await q(sb.from('templates').insert({ id: 'tpl-' + uid(), name: 'New template', lang: 'en', items: [{ id: 'i1', item: 'Welcome', min: 5 }] }))) reload(); },
@@ -765,6 +804,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['accFull', 'assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll', 'layName', 'phRole']);
+export const CHANGE = new Set(['accFull', 'assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll', 'layName', 'phRole', 'lpMode', 'lpTpl']);
 export const INPUT = new Set(['cFind', 'tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
 export { TABS, ic };
