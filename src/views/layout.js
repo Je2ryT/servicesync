@@ -27,9 +27,9 @@ export function vLayout(doc, svc) {
   const who = (r, x) => {
     const name = x.names.join(', ');
     const screen = edit
-      ? `<input type="text" class="draft lay-in noprint" data-act="layName" data-sun="${esc(doc.id)}" data-svc="${esc(svc)}" data-item="${esc(r.id)}" data-tag="${esc(x.id)}" value="${esc(x.typed ? name : '')}" placeholder="${esc(!x.typed && name ? name : t('namePh'))}" aria-label="${esc(tagLabel(x, lang()) + ' · ' + r.item)}">`
+      ? `<input type="text" class="draft lay-in noprint" data-act="layName" data-sun="${esc(doc.id)}" data-svc="${esc(svc)}" data-item="${esc(r.id)}" data-tag="${esc(x.id)}" value="${esc(name)}" placeholder="${esc(t('namePh'))}" aria-label="${esc(tagLabel(x, lang()) + ' · ' + r.item)}">`
       : `<span class="lay-name noprint">${name ? esc(name) : '<span class="lay-blank"></span>'}</span>`;
-    return `<div class="lay-who">${tag(x, L)}${screen}<span class="lay-name print-only">${name ? esc(name) : '<span class="lay-blank"></span>'}</span>${!x.typed && x.fromSchedule && edit ? `<small class="noprint">${esc(t('fromSchedule'))}</small>` : ''}</div>`;
+    return `<div class="lay-who">${tag(x, L)}${screen}<span class="lay-name print-only">${name ? esc(name) : '<span class="lay-blank"></span>'}</span>${!x.typed && x.suggest.length && edit ? `<button class="lay-sug noprint" data-act="layUse" data-sun="${esc(doc.id)}" data-svc="${esc(svc)}" data-item="${esc(r.id)}" data-tag="${esc(x.id)}" data-name="${esc(x.suggest.join(', '))}">${esc(t('useScheduled', { name: x.suggest.join(', ') }))}</button>` : ''}</div>`;
   };
   return `<div class="head noprint"><div><button class="btn link" data-act="layBack">${ic('left')} ${esc(t('allServices'))}</button><h1>${esc(t('serviceLayout'))}</h1>
       <p class="sub">${esc(t('layoutSub'))}${edit ? ' ' + esc(t('layoutEditHint')) : ''}</p></div>
@@ -55,7 +55,7 @@ export function tagsLine(tid, o, editable) {
 
 export function placeholderForm() {
   const d = ui.phDraft; const pos = allPositions().filter(p => p.active !== false);
-  const colorPick = (x, i) => `<div class="ph-colors" role="radiogroup" aria-label="${esc(t('tagColor'))}">${COLORS.map(c => `<label class="ph-sw ${c}"><input type="radio" name="phc-${i}" value="${c}" data-f="color" data-i="${i}" ${x.color === c ? 'checked' : ''}><span>${esc(t('color_' + c))}</span></label>`).join('')}</div>`;
+  const colorPick = (x, i) => `<div class="ph-colors" role="radiogroup" aria-label="${esc(t('tagColor'))}"><span class="ph-cl">${esc(t('tagColor'))}</span>${COLORS.map(c => `<label class="ph-sw ${c}" title="${esc(t('color_' + c))}"><input type="radio" name="phc-${i}" value="${c}" data-f="color" data-i="${i}" ${x.color === c ? 'checked' : ''} aria-label="${esc(t('color_' + c))}"><span></span></label>`).join('')}</div>`;
   return `<h2>${esc(t('placeholdersFor', { item: d.item || '…' }))}</h2><p class="sub" style="margin:0">${esc(t('placeholdersSub'))}</p>
     <div class="ph-rows">${d.list.map((x, i) => `<div class="ph-row">
       <select data-act="phRole" data-f="role" data-i="${i}" aria-label="${esc(t('role'))}">${Object.keys(ROLES).map(r => `<option value="${r}" ${x.role === r ? 'selected' : ''}>${esc(ROLES[r][lang()])}</option>`).join('')}</select>

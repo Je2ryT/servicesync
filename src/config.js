@@ -13,6 +13,8 @@ export const SVC = {
 
 export const PHASES = [['before', 'Before Service'], ['during', 'During Service'], ['after', 'After Service']];
 
+/** Icon for each tab in the side bar. */
+export const TAB_ICONS = { home: 'home', checkin: 'checkc', events: 'cal', calendar: 'layers', live: 'live', reports: 'chart', roster: 'users', followups: 'heart', swaps: 'swap', templates: 'list' };
 export const TABS = [['home', 'Home'], ['checkin', 'Check-in'], ['events', 'Events'], ['calendar', 'Schedule'], ['live', 'Live'], ['reports', 'Reports'], ['roster', 'People'], ['followups', 'Follow-ups'], ['swaps', 'Swaps'], ['templates', 'Templates']];
 
 export const DEFAULT_TPL = {

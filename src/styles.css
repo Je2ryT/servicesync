@@ -739,25 +739,24 @@ main.stage-wrap{padding:0;max-width:none;display:block}
 
 /* ---------- service layout & placeholder tags ---------- */
 .ltag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border:1.5px solid;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.ltag.blue{background:#2a78d6;border-color:#2a78d6;color:#fff}
-.ltag.white{background:#fff;border-color:#5f6680;color:#1c2140}
-.ltag.yellow{background:#f7c948;border-color:#d9a514;color:#3d2c00}
 .ph-line{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:2px 0 8px 32px}
 .ph-line .btn.link{font-size:.8rem;padding:2px 4px}
 ul.ro .ph-line{padding:4px 0 2px}
 .ph-rows{display:grid;gap:10px}
-.ph-row{display:grid;grid-template-columns:140px 150px 196px minmax(0,1fr) 34px;gap:8px;align-items:center}
+.ph-row{display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1fr) 34px;gap:8px 10px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px}
+.ph-row>select[data-f="role"]{grid-column:1;grid-row:1}
+.ph-row>input[data-f="label"]{grid-column:2;grid-row:1}
+.ph-row>select[data-f="pos"]{grid-column:3;grid-row:1}
+.ph-row>.ib{grid-column:4;grid-row:1}
+.ph-row .ph-colors{grid-column:1/-1;grid-row:2}
 .ph-row input[hidden]{display:block;visibility:hidden}
-.ph-colors{display:flex;gap:4px}
-.ph-sw{position:relative;cursor:pointer}
-.ph-sw input{position:absolute;opacity:0;inset:0;cursor:pointer}
-.ph-sw span{display:inline-block;padding:5px 10px;border-radius:999px;font-size:.74rem;font-weight:700;border:1.5px solid}
-.ph-sw.blue span{background:#2a78d6;border-color:#2a78d6;color:#fff}
-.ph-sw.white span{background:#fff;border-color:#5f6680;color:#1c2140}
-.ph-sw.yellow span{background:#f7c948;border-color:#d9a514;color:#3d2c00}
-.ph-sw input:not(:checked)+span{opacity:.45}
+.ph-colors{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ph-cl{font-size:.78rem;color:var(--muted);margin-right:4px}
+.ph-sw{position:relative;cursor:pointer;display:inline-grid}
+.ph-sw input{position:absolute;opacity:0;inset:0;cursor:pointer;margin:0}
+.ph-sw span{width:26px;height:26px;border-radius:50%;border:2px solid rgba(0,0,0,.15);display:block}
 .ph-sw input:checked+span{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--brand)}
-.ph-sw input:focus-visible+span{outline:2px solid var(--cta);outline-offset:3px}
+.ph-sw input:focus-visible+span{outline:2px solid var(--cta);outline-offset:4px}
 .modal:has(.ph-rows){width:min(820px,100%)}
 @media (max-width:760px){.ph-row{grid-template-columns:minmax(0,1fr) 34px}.ph-row>*:not(.ib){grid-column:1}.ph-row .ib{grid-row:1;grid-column:2}}
 .rep-lay{display:flex;flex-wrap:wrap;gap:4px 14px;grid-column:1/-1;padding:0 0 4px}
@@ -860,3 +859,55 @@ ul.ro .ph-line{padding:4px 0 2px}
 .plan-on span{display:grid;gap:2px}
 .plan-on small{color:var(--muted);font-size:.8rem}
 .plan-box .f{margin:0}
+
+/* tag colours (template placeholders and the printed layout) */
+.ltag.blue{background:#2a78d6;border-color:#2a78d6;color:#fff}      .ph-sw.blue span{background:#2a78d6}
+.ltag.white{background:#fff;border-color:#5f6680;color:#1c2140}     .ph-sw.white span{background:#fff;border-color:#9aa1b8}
+.ltag.yellow{background:#f7c948;border-color:#d9a514;color:#3d2c00} .ph-sw.yellow span{background:#f7c948}
+.ltag.red{background:#c62828;border-color:#c62828;color:#fff}       .ph-sw.red span{background:#c62828}
+.ltag.green{background:#1d7a45;border-color:#1d7a45;color:#fff}     .ph-sw.green span{background:#1d7a45}
+.ltag.purple{background:#6250d6;border-color:#6250d6;color:#fff}    .ph-sw.purple span{background:#6250d6}
+.ltag.orange{background:#eb6834;border-color:#eb6834;color:#fff}    .ph-sw.orange span{background:#eb6834}
+.ltag.pink{background:#f3b6cc;border-color:#d55181;color:#5c1230}   .ph-sw.pink span{background:#f3b6cc}
+.ltag.gray{background:#e7e9f0;border-color:#8a8fa8;color:#1c2140}   .ph-sw.gray span{background:#a3a8bd}
+.lay-sug{background:none;border:0;padding:2px 0;color:var(--cta);font-size:.78rem;font-weight:600;cursor:pointer;flex-basis:100%;text-align:left}
+.lay-sug:hover{text-decoration:underline}
+@media (max-width:760px){.ph-row{grid-template-columns:minmax(0,1fr) 34px}.ph-row>*{grid-column:1!important;grid-row:auto!important}.ph-row>.ib{grid-column:2!important;grid-row:1!important}.ph-row>input[data-f="label"][hidden]{display:none}}
+
+/* ---------- navigation in a side bar on wide screens ---------- */
+nav.tabs svg.i{display:none;width:18px;height:18px;flex:none}
+@media (min-width:1024px){
+  body.has-side{padding-left:236px}
+  body.has-side header.top{position:fixed;top:0;bottom:0;left:0;width:236px;border-bottom:0;border-right:1px solid var(--line);overflow-y:auto;z-index:6}
+  body.has-side .bar{flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:22px;min-height:100%;max-width:none;padding:20px 14px 18px}
+  body.has-side .logo{padding:0 6px}
+  body.has-side .logo small{display:block}
+  body.has-side nav.tabs{flex-direction:column;gap:2px;margin:0;overflow:visible}
+  body.has-side nav.tabs button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;font-size:.95rem}
+  body.has-side nav.tabs svg.i{display:block}
+  body.has-side nav.tabs button[aria-selected="true"]{border-color:transparent;box-shadow:inset 3px 0 0 var(--accent);font-weight:600}
+  body.has-side .who{margin-top:auto;text-align:left;border-top:1px solid var(--line);padding:14px 6px 0}
+  body.has-side .who .row{flex-direction:column-reverse;align-items:flex-start!important;gap:12px}
+  body.has-side .who .row>div:not(.lang-sw){max-width:190px}
+  body.has-side #banner{position:fixed;left:236px;right:0;top:0;z-index:5}
+  body.has-side main.wrap{max-width:1180px}
+}
+
+/* ---------- phones and tablets: the same navigation slides in from the left ---------- */
+.menu-btn{display:none;width:42px;height:42px;border-radius:10px;border:1px solid var(--line);background:var(--surface);align-items:center;justify-content:center;flex:none;cursor:pointer}
+.menu-btn svg{width:22px;height:22px;stroke:var(--brand);stroke-width:2;fill:none;stroke-linecap:round}
+.nav-scrim{display:none}
+@media (max-width:1023px){
+  body.has-side .menu-btn{display:inline-flex}
+  body.has-side .bar{flex-wrap:nowrap}
+  body.has-side .who{margin-left:auto}
+  body.has-side nav.tabs{position:fixed;top:0;bottom:0;left:0;width:min(280px,82vw);z-index:30;background:var(--surface);flex-direction:column;gap:2px;margin:0;padding:calc(18px + env(safe-area-inset-top,0px)) 12px 18px;overflow-y:auto;box-shadow:0 0 40px rgba(15,20,48,.25);transform:translateX(-105%);transition:transform .22s ease;order:0;max-width:none}
+  body.has-side.nav-open nav.tabs{transform:none}
+  body.has-side nav.tabs button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 12px;font-size:1rem}
+  body.has-side nav.tabs svg.i{display:block}
+  body.has-side nav.tabs button[aria-selected="true"]{border-color:transparent;box-shadow:inset 3px 0 0 var(--accent);font-weight:600}
+  body.has-side.nav-open .nav-scrim{display:block;position:fixed;inset:0;z-index:29;background:rgba(15,20,48,.4)}
+  body.has-side.nav-open header.top{z-index:31}   /* the drawer lives inside the header, so lift the header above the scrim */
+}
+@media (max-width:1023px) and (prefers-reduced-motion:reduce){body.has-side nav.tabs{transition:none}}
+@media (max-width:420px){body.has-side .logo small{display:none}body.has-side .who .row>div:not(.lang-sw){display:none}}

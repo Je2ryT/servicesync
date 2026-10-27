@@ -1,5 +1,5 @@
 import { ui, me } from './state.js';
-import { TABS } from './config.js';
+import { TABS, TAB_ICONS } from './config.js';
 import { esc } from './util.js';
 import { ic } from './icons.js';
 import { myPerson, pname } from './domain.js';
@@ -23,9 +23,9 @@ export function render() {
   const a = document.activeElement;
   if (ui.ready && a && a.classList && a.classList.contains('draft')) { pending = true; return; }   // don't wipe a field mid-typing
   pending = false;
-  stageMode(false);
+  stageMode(false); sideMode(false);
   const tabs = document.getElementById('tabs'); const main = document.getElementById('main'); const who = document.getElementById('who');
-  tabs.innerHTML = TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${ui.tab === k}">${l}</button>`).join('');
+  tabs.innerHTML = TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${ui.tab === k}">${ic(TAB_ICONS[k] || 'list')}<span>${l}</span></button>`).join('');
   if (!ui.session) {
     tabs.hidden = true; who.innerHTML = ui.authView === 'landing' ? '<button class="btn cta" data-act="goSignin">Sign in</button>' : '';
     main.className = 'wrap' + (ui.authView === 'signin' ? ' center' : ''); main.innerHTML = ui.authView === 'signin' ? vSignin() : vLanding(); return;
@@ -37,9 +37,11 @@ export function render() {
   if (ui.needsMigration) { tabs.hidden = true; main.className = 'wrap center'; main.innerHTML = vNeedsMigration(); return; }
   if (!me.admin && !mp) { tabs.hidden = true; main.className = 'wrap center'; main.innerHTML = vNotMember(); return; }
   if (ui.stage) { stageMode(true); main.className = 'stage-wrap'; main.innerHTML = ui.stage.remote ? vRemote() : vStage(); return; }
-  tabs.hidden = false;
+  tabs.hidden = false; sideMode(true);
   main.innerHTML = (VIEWS[ui.tab] || vHome)();
 }
 /* The stage screen hides the app header and fills the window. */
-function stageMode(on) { document.body.classList.toggle('stage-mode', on); }
+function stageMode(on) { document.body.classList.toggle('stage-mode', on); if (on) sideMode(false); }
+/* Signed in with the tabs showing: on wide screens the navigation sits in a bar on the left. */
+function sideMode(on) { document.body.classList.toggle('has-side', on); }
 export const renderPending = () => { if (pending) render(); };

@@ -14,7 +14,7 @@ export const ROLES = {
   choir: { en: 'Choir', fr: 'Chorale', color: 'blue' },
   other: { en: 'Other', fr: 'Autre', color: 'white' },
 };
-export const COLORS = ['blue', 'white', 'yellow'];
+export const COLORS = ['blue', 'white', 'yellow', 'red', 'green', 'purple', 'orange', 'pink', 'gray'];
 
 /** A placeholder's label in a language ("other" uses the label typed for it). */
 export const tagLabel = (tag, lang = 'en') => (tag.role === 'other' || !ROLES[tag.role] ? (tag.label || ROLES.other[lang === 'fr' ? 'fr' : 'en']) : ROLES[tag.role][lang === 'fr' ? 'fr' : 'en']);
@@ -32,13 +32,14 @@ export function positionFor(tag) {
   return allPositions().find(p => p.active !== false && names.has(fold(p.name)))?.id || '';
 }
 
-/** Who fills a placeholder at one service: typed name first, then the schedule (not those who declined). */
+/** Who fills a placeholder at one service. The box starts empty: only a typed name fills it.
+    Whoever the schedule has for that position is offered as a suggestion (not those who declined). */
 export function namesFor(doc, svc, itemId, tag) {
   const typed = S.reports[doc.id + '|' + svc]?.layout?.[itemId]?.[tag.id];
-  if (typed != null && String(typed).trim()) return { names: [String(typed).trim()], typed: true };
   const pos = positionFor(tag);
-  const names = pos ? asgOf(doc.id, svc, pos).filter(a => status(a) !== 'declined').map(a => pname(a.person)) : [];
-  return { names, typed: false, fromSchedule: !!names.length };
+  const suggest = pos ? asgOf(doc.id, svc, pos).filter(a => status(a) !== 'declined').map(a => pname(a.person)) : [];
+  if (typed != null && String(typed).trim()) return { names: [String(typed).trim()], typed: true, suggest };
+  return { names: [], typed: false, suggest };
 }
 
 /** The whole layout of a service: each part with its time and filled-in placeholders. */

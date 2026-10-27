@@ -152,7 +152,8 @@ export function stageKey(e) {
 
 /* ---------- handlers ---------- */
 export const H = {
-  tab(el) { if (el.dataset.tab === 'reports') ui.rep = null; ui.tab = el.dataset.tab; try { localStorage.setItem('ss-tab', ui.tab); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
+  navToggle() { const on = !document.body.classList.contains('nav-open'); document.body.classList.toggle('nav-open', on); document.querySelector('.menu-btn')?.setAttribute('aria-expanded', String(on)); },
+  tab(el) { document.body.classList.remove('nav-open'); if (el.dataset.tab === 'reports') ui.rep = null; ui.tab = el.dataset.tab; try { localStorage.setItem('ss-tab', ui.tab); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
   openLive(el) { const list = docs().filter(visible); const i = list.findIndex(d => d.id === el.dataset.id); if (i < 0) { toast('This Sunday is not planned yet.'); return; } ui.liveIdx = i; ui.liveSvc = el.dataset.svc; ui.tab = 'live'; render(); window.scrollTo(0, 0); },
   liveNav(el) { ui.liveIdx += +el.dataset.k; render(); },
   liveSvc(el) { ui.liveSvc = el.dataset.svc; render(); },
@@ -482,6 +483,7 @@ export const H = {
   openLayout(el) { ui.layoutFrom = ui.tab === 'reports' ? null : ui.tab; ui.layout = el.dataset.id + '|' + el.dataset.svc; ui.tab = 'reports'; ui.rsub = 'reports'; render(); window.scrollTo(0, 0); },
   layBack() { ui.layout = null; if (ui.layoutFrom) { ui.tab = ui.layoutFrom; ui.layoutFrom = null; } render(); window.scrollTo(0, 0); },
   layPrint() { window.print(); },
+  layUse(el) { const box = document.querySelector(`.lay-in[data-item="${el.dataset.item}"][data-tag="${el.dataset.tag}"]`); if (box) box.value = el.dataset.name; return H.layName({ dataset: el.dataset, value: el.dataset.name }); },
   async layName(el) {
     const d = el.dataset; const key = d.sun + '|' + d.svc; const name = el.value.trim();
     const { data, error } = await sb.rpc('save_layout', { p_sunday: d.sun, p_svc: d.svc, p_item: d.item, p_tag: d.tag, p_name: name });

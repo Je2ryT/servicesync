@@ -85,10 +85,10 @@ The **Follow-ups** tab shows one board per flow, with a column for each step. Th
 
 Print the order of service before every service, with who leads each part.
 
-1. **Templates → Order of service**: under each part, press **Add placeholder**. Pick the role (Pastor, Moderator, Interpreter, Choir, or **Other** with your own label such as Usher or Reader) and the tag colour: **blue, white or yellow**. Press **Done**, then **Save** the template. The default templates start with Moderator (welcome), Choir (worship), and Pastor and Interpreter (sermon).
+1. **Templates → Order of service**: under each part, press **Add placeholder**. Pick the role (Pastor, Moderator, Interpreter, Choir, or **Other** with your own label such as Usher or Reader) and the tag colour: blue, white, yellow, red, green, purple, orange, pink or gray. Press **Done**, then **Save** the template. The default templates start with Moderator (welcome), Choir (worship), and Pastor and Interpreter (sermon).
 2. **Reports → Layout** next to a service (or **Service layout** on its report): each placeholder shows its coloured tag and a name.
-   - Names fill in from the schedule: from the position you linked to the placeholder, or a position with the same name (Pastor, Moderator, Interpreter/Interprète, Choir/Chorale).
-   - Type a different name to change it for that service only. Leave it empty to go back to the schedule.
+   - Each name box starts empty: type who will moderate, preach, interpret, and so on. It's saved for that service only.
+   - If someone is scheduled in a matching position (the one linked to the placeholder, or one with the same name, such as Pastor, Moderator, Interpreter/Interprète or Choir/Chorale), their name is offered under the box: press it to use it.
    - Places nobody fills print as a blank line, to write in by hand.
 3. Press **Print**. The sheet has the church logo, the date and times, a Notes area, and prints in colour. French services print in French.
 
@@ -168,6 +168,10 @@ The address looks like `…/#stage/2026-11-01/en`, so a booth laptop or TV can b
 **Phone remote.** Press **Remote** on the timer card. Scan the QR code with a phone (or copy the link, `…/#remote/2026-11-01/en`), sign in, and the phone becomes a remote: a big **Next** button, **Back**, **Pause**, **−1 / +1 / +5 min**, a stage message and **End service**. Every press updates the stage screen, the Live tab and any other remote within a second (through Supabase Realtime), so the timer can be run from the front row while the stage screen sits on the booth computer. Several remotes can be used at once; the phone stays awake while the remote is open.
 
 Who can run the timer: administrators with **Full access** or the **Live service** area (any service, even before it's published), and people on the roster on published Sundays. Others see the countdown without the buttons.
+
+## Navigation
+
+On computers the tabs sit in a bar on the left, with your name, sign-out and the EN | FR switch at the bottom. On phones and tablets, the ☰ button at the top left opens the same list from the left side.
 
 ## Working on the code
 
