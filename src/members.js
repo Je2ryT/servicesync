@@ -4,6 +4,7 @@ import { S, T, me } from './state.js';
 import { ym, iso, fmt, toMin, clock } from './util.js';
 import { myPerson, assignments, docOf, status, warnings, svcName, posName } from './domain.js';
 import { isVisitor } from './people.js';
+import { myFollowups, isOverdue } from './flows.js';
 
 /* ---------- members ---------- */
 export const STATUS = { member: 'Member', regular: 'Regular attender', newcomer: 'Newcomer', visitor: 'Visitor' };
@@ -84,6 +85,8 @@ export function notifications() {
     const fresh = Object.values(S.members).filter(m => isVisitor(m) && m.createdAt >= weekAgo.getTime()).length;
     if (fresh) out.push({ kind: 'info', icon: 'users', text: `${fresh} newcomer${fresh === 1 ? '' : 's'} this week to follow up`, act: 'tab', data: 'checkin' });
   }
+  const late = myFollowups().filter(e => isOverdue(e)).length;
+  if (late) out.push({ kind: 'action', icon: 'users', text: `${late} follow-up${late === 1 ? '' : 's'} overdue`, act: 'tab', data: 'followups' });
   const soon = new Date(T.now); soon.setDate(soon.getDate() + 7); const end = iso(soon);
   for (const e of eventsList().filter(e => e.date >= T.todayIso && e.date <= end).slice(0, 3)) out.push({ kind: 'info', icon: 'cal', text: `${e.title}, ${fmt(e.date)}${e.start ? ' · ' + clock(e.start) : ''}`, act: 'tab', data: 'events' });
   return out;

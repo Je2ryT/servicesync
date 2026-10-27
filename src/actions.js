@@ -3,7 +3,7 @@ import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
 import { ic } from './icons.js';
-import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity, loadProfile } from './data.js';
+import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity, loadProfile, loadMessages, loadRecipients, sendMessage } from './data.js';
 import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
@@ -20,6 +20,11 @@ import { activityListHtml } from './views/activity.js';
 import { peopleRowsHtml, bulkBarHtml, personForm, categoryForm, saveFilterForm, manageFiltersForm } from './views/directory.js';
 import { filterPeople, toCsv, cats, catOf } from './people.js';
 import { t } from './i18n.js';
+import { composeView, counterHtml } from './views/compose.js';
+import { sourceIds, audience, newKey } from './compose.js';
+import { msgState } from './views/messages.js';
+import { doneForm, addForm, flowForm } from './views/followups.js';
+import { stepsOf } from './flows.js';
 import { parseCsv, detectColumns, memberRows, newFamilies } from './importer.js';
 import { fold } from './members.js';
 import { timeRange } from './views/shared.js';
@@ -84,6 +89,10 @@ function download(name, text, type = 'text/csv;charset=utf-8') {
 }
 function syncCatDraft() {
   document.querySelectorAll('.cat-ed [data-ci]').forEach(el => { const c = ui.catDraft[+el.dataset.ci]; if (!c) return; if (el.dataset.f === 'hidden') c.hidden = el.checked; else c[el.dataset.f] = el.value; });
+}
+function syncFlowDraft() {
+  const d = ui.flowDraft; if (!d) return; d.name = val('flName') || d.name; d.nameFr = document.getElementById('flNameFr')?.value ?? d.nameFr;
+  document.querySelectorAll('.fl-steps [data-si]').forEach(el => { const s = d.steps[+el.dataset.si]; if (s) s[el.dataset.f] = el.dataset.f === 'days' ? Math.max(0, Math.min(365, +el.value || 0)) : el.value; });
 }
 const chunks = (a, n = 200) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
@@ -265,6 +274,7 @@ export const H = {
     else saved = await q(sb.from('members').insert({ ...row, created_by: myPerson() }).select('id').single());
     if (!saved) return;
     if (checkIn) await q(sb.from('attendance').upsert({ member_id: saved.id, date: T.todayIso, svc: ciService(), by_coord: myPerson() }, { onConflict: 'member_id,date,svc', ignoreDuplicates: true }));
+    if (!id && !ui.flowsMissing) await sb.rpc('flow_enroll', { p_member: saved.id, p_flow: 'newcomer' });   // new at the door → newcomer follow-up
     ui.ciQuery = ''; reload(); toast(id ? `Saved ${name}.` : `Welcome, ${name}!${checkIn ? ' Checked in.' : ''}`);
   },
   async delMember(el) { if (!tapTwice(el, 'Tap again: attendance goes too')) return; closeModal(); if (await q(sb.from('members').delete().eq('id', el.dataset.id))) reload(); },
@@ -279,11 +289,11 @@ export const H = {
     const rows = parseCsv(await f.text());
     if (rows.length < 2) { ui.imp = { error: 'No people found in that file. Check it is the CSV from People → Export.' }; modal(importView()); return; }
     const headers = rows[0];
-    ui.imp = { fileName: f.name, headers, rows: rows.slice(1), map: detectColumns(headers), lang: 'fr', status: 'member', cat: 'congregation' };
+    ui.imp = { fileName: f.name, headers, rows: rows.slice(1), map: detectColumns(headers), lang: 'fr', status: 'member', cat: 'congregation', flows: false };
     modal(importView());
   },
   impMap(el) { if (el.value === '') delete ui.imp.map[el.dataset.k]; else ui.imp.map[el.dataset.k] = +el.value; modal(importView()); },
-  impOpt(el) { ui.imp[el.dataset.k] = el.value; modal(importView()); },
+  impOpt(el) { ui.imp[el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value; modal(importView()); },
   async impRun(el) {
     const { add } = importPlan(); if (!add.length) return;
     el.disabled = true; const by = myPerson(); let done = 0; const rich = !ui.peopleMissing;
@@ -301,7 +311,7 @@ export const H = {
     }
     for (let i = 0; i < rows.length; i += 200) {
       el.textContent = `Importing… ${done} of ${rows.length}`;
-      const ok = await q(sb.from('members').insert(rows.slice(i, i + 200).map(m => ({ ...m, created_by: by }))));
+      const ok = await q(sb.from('members').insert(rows.slice(i, i + 200).map(m => ({ ...m, created_by: rich && !ui.imp.flows ? 'import' : by }))));
       if (!ok) { el.disabled = false; el.textContent = 'Try again'; toast(done ? `Imported ${done} before an error. Try again to add the rest.` : 'Nothing was imported.'); reload(); return; }
       done += Math.min(200, rows.length - i);
     }
@@ -412,6 +422,89 @@ export const H = {
     ui.catDraft = null; reload(); toast(t('saved'));
   },
 
+  /* messaging */
+  contact(el) {
+    const d = el.dataset; const src = { kind: d.src };
+    if (d.src === 'selection') src.ids = [...ui.psel];
+    if (d.src === 'filter') src.filters = { ...ui.pf };
+    if (d.src === 'person') src.id = d.id;
+    if (d.src === 'service') Object.assign(src, { sunId: d.sun, svc: d.svc });
+    if (d.src === 'team') src.teamId = d.team;
+    const ids = sourceIds(src);
+    ui.compose = { key: newKey(), source: src, ids, label: d.label || '', channel: 'sms', subject: '', body: '', step: 'edit', error: '', result: null };
+    modal(composeView());
+  },
+  cmpChannel(el) { ui.compose.channel = el.value; modal(composeView()); document.getElementById('cmpBody')?.focus(); },
+  cmpSubject(el) { ui.compose.subject = el.value; },
+  cmpBody(el) { ui.compose.body = el.value; const n = document.getElementById('cmpCount'); if (n) n.innerHTML = counterHtml(); },
+  cmpMerge() {
+    const b = document.getElementById('cmpBody'); if (!b) return;
+    const at = b.selectionStart ?? b.value.length; b.value = b.value.slice(0, at) + '{first_name}' + b.value.slice(b.selectionEnd ?? at);
+    ui.compose.body = b.value; b.focus(); b.selectionStart = b.selectionEnd = at + 12; const n = document.getElementById('cmpCount'); if (n) n.innerHTML = counterHtml();
+  },
+  cmpReview() {
+    const c = ui.compose; c.body = val('cmpBody') || c.body; c.subject = document.getElementById('cmpSubject') ? val('cmpSubject') : c.subject;
+    if (!c.body.trim()) { toast(t('message')); document.getElementById('cmpBody')?.focus(); return; }
+    if (c.channel !== 'sms' && !c.subject.trim()) { toast(t('subject')); document.getElementById('cmpSubject')?.focus(); return; }
+    c.step = 'confirm'; c.error = ''; modal(composeView());
+  },
+  cmpBack() { ui.compose.step = 'edit'; modal(composeView()); },
+  async cmpSend() {
+    const c = ui.compose; if (c.step === 'sending') return;
+    const a = audience(c.ids, c.channel);
+    c.step = 'sending'; modal(composeView());
+    const r = await sendMessage({ key: c.key, channel: c.channel, subject: c.subject.trim(), body: c.body.trim(), recipients: a.people.map(m => m.id), source: { ...c.source, label: c.label } });
+    if (ui.compose !== c) return;
+    if (r.ok) { c.step = 'done'; c.result = r.body; if (ui.msgs) ui.msgs.loaded = false; } else { c.step = 'confirm'; c.error = r.error; }
+    modal(composeView());
+  },
+  cmpViewSent() { closeModal(); ui.tab = 'reports'; ui.rsub = 'messages'; ui.rep = null; if (ui.msgs) ui.msgs.loaded = false; render(); },
+  msgRefresh() { const m = msgState(); m.loaded = false; m.open = null; render(); },
+  msgOpen(el) { const m = msgState(); m.open = el.dataset.id; m.recips = null; render(); window.scrollTo(0, 0); loadRecipients(m.open); },
+  msgClose() { msgState().open = null; render(); },
+
+  /* follow-ups */
+  flowPick(el) { ui.flow = el.dataset.id; render(); },
+  fuMine(el) { ui.fmine = el.checked; render(); },
+  async fuAssign(el) { if (await q(sb.from('flow_entries').update({ assignee: el.value || null }).eq('id', el.dataset.id))) { S.fentries[el.dataset.id].assignee = el.value || null; reload(); toast(t('saved')); } },
+  async fuDue(el) { if (!el.value) return; if (await q(sb.from('flow_entries').update({ due_date: el.value }).eq('id', el.dataset.id))) { S.fentries[el.dataset.id].due = el.value; reload(); render(); } },
+  fuDone(el) { modal(doneForm(el.dataset.id)); document.getElementById('fuNote')?.focus(); },
+  async fuDoneGo(el) {
+    el.disabled = true; const note = val('fuNote').trim();
+    const r = await q(sb.rpc('flow_advance', { p_entry: el.dataset.id, p_note: note || null }));
+    closeModal(); if (!r) return;
+    reload(); toast(t('saved')); if (ui.person) loadProfile(ui.person);
+  },
+  fuAdd(el) { modal(addForm(el.dataset.member || ui.person || '')); },
+  async fuAddGo() {
+    const member = val('fuMember'), flow = val('fuFlow'); if (!member || !flow) return; closeModal();
+    if (await q(sb.rpc('flow_enroll', { p_member: member, p_flow: flow }))) { reload(); toast(t('saved')); if (ui.person) loadProfile(ui.person); }
+  },
+  flowEdit(el) {
+    if (!me.admin) return; const id = el.dataset.id || '';
+    ui.flowDraft = id ? { id, name: S.flows[id].name, nameFr: S.flows[id].nameFr || '', steps: stepsOf(id).map(s => ({ id: s.id, title: s.title, titleFr: s.titleFr || '', assignee: s.assignee || '', days: s.days })), removed: [] }
+      : { id: '', name: '', nameFr: '', steps: [{ id: null, title: '', titleFr: '', assignee: '', days: 3 }], removed: [] };
+    modal(flowForm());
+  },
+  flowStepAdd() { syncFlowDraft(); ui.flowDraft.steps.push({ id: null, title: '', titleFr: '', assignee: '', days: 3 }); modal(flowForm()); },
+  flowStepMove(el) { syncFlowDraft(); const i = +el.dataset.i, st = ui.flowDraft.steps; if (i > 0) [st[i - 1], st[i]] = [st[i], st[i - 1]]; modal(flowForm()); },
+  flowStepDel(el) { syncFlowDraft(); const [s] = ui.flowDraft.steps.splice(+el.dataset.i, 1); if (s?.id) ui.flowDraft.removed.push(s.id); modal(flowForm()); },
+  async flowSave() {
+    syncFlowDraft(); const d = ui.flowDraft; const steps = d.steps.filter(s => String(s.title).trim());
+    if (!d.name.trim()) { toast(t('flowName')); return; } if (!steps.length) { toast(t('addStep')); return; }
+    closeModal();
+    let id = d.id;
+    if (id) { if (!await q(sb.from('flows').update({ name: d.name.trim(), name_fr: d.nameFr.trim() || null }).eq('id', id))) return; }
+    else { const f = await q(sb.from('flows').insert({ name: d.name.trim(), name_fr: d.nameFr.trim() || null }).select('id').single()); if (!f) return; id = f.id; }
+    const row = (s, i) => ({ flow_id: id, sort: i, title: s.title.trim(), title_fr: String(s.titleFr || '').trim() || null, default_assignee: s.assignee || null, due_days: +s.days || 0 });
+    const old = steps.map((s, i) => ({ s, i })).filter(x => x.s.id).map(({ s, i }) => ({ id: s.id, ...row(s, i) }));
+    const add = steps.map((s, i) => ({ s, i })).filter(x => !x.s.id).map(({ s, i }) => row(s, i));
+    if (old.length && !await q(sb.from('flow_steps').upsert(old))) return;
+    if (add.length && !await q(sb.from('flow_steps').insert(add))) return;
+    if (d.removed.length) await q(sb.from('flow_steps').delete().in('id', d.removed));
+    ui.flowDraft = null; ui.flow = id; reload(); toast(t('saved'));
+  },
+
   /* events */
   evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
   evDay(el) { ui.evDay = el.dataset.date || null; render(); },
@@ -520,6 +613,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick']);
-export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue']);
+export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
 export { TABS, ic };

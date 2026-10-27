@@ -9,7 +9,9 @@ import { isVisitor } from '../people.js';
 import { canRun } from './timer.js';
 import { timeRange } from './shared.js';
 import { vActivity, actState } from './activity.js';
-import { loadActivity } from '../data.js';
+import { loadActivity, loadMessages } from '../data.js';
+import { vMessages, msgState } from './messages.js';
+import { t } from '../i18n.js';
 
 export const reportOf = (sunId, svc) => S.reports[sunId + '|' + svc] || { notes: {}, summary: '', followups: '' };
 
@@ -71,9 +73,13 @@ function vReport(doc, svc) {
 }
 
 /* ---------- list of reports ---------- */
-const subnav = () => (me.admin ? `<div><div class="seg"><button data-act="rsub" data-v="reports" aria-pressed="${ui.rsub !== 'activity'}">Service reports</button><button data-act="rsub" data-v="activity" aria-pressed="${ui.rsub === 'activity'}">Activity log</button></div></div>` : '');
+const subnav = () => `<div><div class="seg"><button data-act="rsub" data-v="reports" aria-pressed="${!['activity', 'messages'].includes(ui.rsub)}">${esc(t('serviceReports'))}</button><button data-act="rsub" data-v="messages" aria-pressed="${ui.rsub === 'messages'}">${esc(t('sentMessages'))}</button>${me.admin ? `<button data-act="rsub" data-v="activity" aria-pressed="${ui.rsub === 'activity'}">${esc(t('activityLog'))}</button>` : ''}</div></div>`;
 
 export function vReports() {
+  if (ui.rsub === 'messages') {
+    const m = msgState(); if (!m.loaded && !m.loading) setTimeout(() => loadMessages(), 0);
+    return subnav() + vMessages();
+  }
   if (me.admin && ui.rsub === 'activity') {
     const a = actState(); if (!a.loaded && !a.loading) setTimeout(() => loadActivity(), 0);
     return subnav() + vActivity();
