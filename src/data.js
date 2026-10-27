@@ -172,3 +172,20 @@ export async function sendMessage(payload) {
     return r.ok ? { ok: true, body } : { ok: false, error: body.error || `Error ${r.status}` };
   } catch (e) { return { ok: false, error: 'No connection. Check the internet and try again.' }; }
 }
+
+/* ---------- Reports (009) ---------- */
+const missingFn = e => /PGRST202|PGRST205|42883|42P01|does not exist|schema cache/i.test((e.code || '') + ' ' + (e.message || ''));
+/** Run one report's database function and keep the rows under its key in ui.rpt.cache. */
+export async function runReport(key, rpc, args) {
+  const c = (ui.rpt.cache[key] = { loading: true, rows: null, error: '', missing: false });
+  const { data, error } = await sb.rpc(rpc, args);
+  c.loading = false;
+  if (error) { c.missing = missingFn(error); c.error = error.message; } else c.rows = data || [];
+  onLoaded();
+}
+export async function loadSchedules() {
+  const s = ui.rpt.sched; if (s.loading) return; s.loading = true;
+  const { data, error } = await sb.from('report_schedules').select('*').order('created_at', { ascending: true });
+  s.loading = false; s.loaded = true; s.missing = !!error && missingFn(error); s.rows = data || [];
+  onLoaded();
+}

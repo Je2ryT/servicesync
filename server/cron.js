@@ -1,7 +1,8 @@
 /* Weekly jobs, run by Vercel Cron through /api/cron (every Monday morning).
    Each job writes to the messages log with a per-week idempotency key, so a repeated
    cron call never sends the same email twice. */
-import { resendBatch, escapeHtml, appUrl } from './lib.js';
+import { resendBatch, resendEmail, escapeHtml, appUrl } from './lib.js';
+import { reportDef, reportCsv, cellText, summaryOf, csvName } from '../src/reportdefs.js';
 
 /** Monday of the week of `d`, as YYYY-MM-DD (UTC). */
 export function weekOf(d = new Date()) {
@@ -48,4 +49,37 @@ export async function followupReminders({ db, env = process.env, fetch = globalT
     await finishSystemEmail(db, id, r.ok, r.ids?.[0], r.error); if (r.ok) sent++;
   }
   return { people: by.size, sent, skipped };
+}
+
+/** Phase 4: weekly report emails (report_schedules), on each schedule's weekday, with the CSV attached. */
+export async function scheduledReports({ db, env = process.env, fetch = globalThis.fetch, now = new Date() }) {
+  const today = now.toISOString().slice(0, 10);
+  const list = await db.q(`select * from report_schedules where active and weekday = $1 and (last_sent is null or last_sent < $2::date) order by created_at`, [now.getUTCDay(), today]);
+  if (!list.length) return { reports: 0, sent: 0 };
+  const cats = Object.fromEntries((await db.q('select id, name, name_fr from categories')).map(c => [c.id, c]));
+  const base = appUrl(env); let sent = 0, failed = 0;
+  for (const s of list) {
+    const def = reportDef(s.report); if (!def || def.noSchedule) continue;
+    const lang = s.lang === 'fr' ? 'fr' : 'en'; const ctx = { lang, cat: id => (lang === 'fr' && cats[id]?.name_fr) || cats[id]?.name || id };
+    const args = def.args(s.params || {}, today); const names = Object.keys(args);
+    const rows = await db.q(`select * from ${def.rpc}(${names.map((k, i) => `${k} => $${i + 1}`).join(', ')})`, names.map(k => args[k]));
+    const title = def.title[lang]; const summary = summaryOf(def, rows, lang);
+    const subject = `${title} · ${summary}`;
+    const shown = rows.slice(0, 50);
+    const th = def.columns.map(c => `<th style="text-align:left;padding:6px 8px;border-bottom:1px solid #e2e5ef;font-size:12px;color:#5f6680">${escapeHtml(c.label[lang])}</th>`).join('');
+    const trs = shown.map(r => `<tr>${def.columns.map(c => `<td style="padding:6px 8px;border-bottom:1px solid #eef0f6;font-size:13px">${escapeHtml(cellText(c, r[c.k], ctx))}</td>`).join('')}</tr>`).join('');
+    const more = rows.length > shown.length ? (lang === 'fr' ? `${shown.length} lignes sur ${rows.length} ci-dessus ; le fichier CSV joint contient tout.` : `${shown.length} of ${rows.length} rows above; the attached CSV has everything.`) : '';
+    const link = base ? `${base}/#reports` : '';
+    const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1c2140"><h2 style="margin:0 0 4px;font-size:18px">${escapeHtml(title)}</h2><p style="margin:0 0 12px;color:#5f6680">${escapeHtml(summary)}</p>
+      ${rows.length ? `<table style="border-collapse:collapse;width:100%"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>` : ''}<p style="color:#5f6680;font-size:13px">${escapeHtml(more)}${link ? ` <a href="${escapeHtml(link)}">ServiceSync</a>` : ''}</p></div>`;
+    const text = `${title}\n${summary}\n\n${shown.map(r => def.columns.map(c => cellText(c, r[c.k], ctx)).filter(Boolean).join(' · ')).join('\n')}\n\n${more} ${link}`.trim();
+    const key = `report-${s.id}-${today}`; const to = s.recipients || [];
+    const id = await logSystemEmail(db, { key, subject, body: text, to: to.join(', '), name: title, source: { kind: 'report', report: s.report, schedule: s.id } });
+    if (!id) continue;   // already sent today
+    const csv = Buffer.from(reportCsv(def, rows, ctx), 'utf8').toString('base64');
+    const r = await resendEmail({ to, subject, html, text, attachments: [{ filename: csvName(def, today), content: csv }] }, key, { env, fetch }).catch(e => ({ ok: false, error: e.message }));
+    await finishSystemEmail(db, id, r.ok, r.ids?.[0], r.error);
+    if (r.ok) { sent++; await db.q('update report_schedules set last_sent = $2::date where id = $1', [s.id, today]); } else failed++;
+  }
+  return { reports: list.length, sent, failed };
 }
