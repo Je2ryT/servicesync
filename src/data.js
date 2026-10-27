@@ -5,6 +5,7 @@ import { S, ui, setState } from './state.js';
 import { toast } from './ui.js';
 import { clock, timerRow, timerKey } from './timer.js';
 import { logRow } from './activity.js';
+import { messageRow } from './views/messages.js';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -143,4 +144,27 @@ export async function loadProfile(id) {
     att: (a.data || []).map(r => ({ date: r.date, svc: r.svc })).sort((a, b) => b.date.localeCompare(a.date)),
   };
   onLoaded();
+}
+
+/** Sent messages (admins: all; others: their own), newest first. */
+export async function loadMessages() {
+  const m = ui.msgs; if (!m || m.loading) return; m.loading = true; m.error = '';
+  const { data, error } = await sb.from('messages').select('*').order('created_at', { ascending: false }).limit(200);
+  m.loading = false; m.loaded = true;
+  if (error) m.error = /does not exist|schema cache|PGRST205|42P01/i.test(error.code + ' ' + error.message) ? 'This needs a database update. Run migrations/007-messaging.sql in Supabase, then reload.' : error.message;
+  else m.rows = (data || []).map(messageRow);
+  onLoaded();
+}
+export async function loadRecipients(id) {
+  const { data } = await sb.from('message_recipients').select('*').eq('message_id', id).order('name', { ascending: true });
+  if (ui.msgs?.open === id) { ui.msgs.recips = data || []; onLoaded(); }
+}
+/** POST /api/send with the signed-in user's token. Returns { ok, body } or { ok: false, error }. */
+export async function sendMessage(payload) {
+  const { data } = await sb.auth.getSession(); const token = data?.session?.access_token;
+  try {
+    const r = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` }, body: JSON.stringify(payload) });
+    const body = await r.json().catch(() => ({}));
+    return r.ok ? { ok: true, body } : { ok: false, error: body.error || `Error ${r.status}` };
+  } catch (e) { return { ok: false, error: 'No connection. Check the internet and try again.' }; }
 }

@@ -22,6 +22,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 004 | `004-service-reports.sql` | Service reports | |
 | 005 | `005-activity-log.sql` | Activity log (who changed what) | Starts recording from the moment it runs; earlier changes aren't in the log. |
 | 006 | `006-people.sql` | Richer people: categories, families, notes timeline, profile fields, saved filters | Each status becomes a category (member/regular → Congregation, newcomer/visitor → Visitors) and the move is written to the category history; the old status column is kept. Notes move to the notes timeline. Everyone on the serving team gets a member record (Volunteers). Check-in keeps working before and after. |
+| 007 | `007-messaging.sql` | Email and text messages: message log, recipients, opt-out history | Sending also needs the Vercel settings below. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -35,6 +36,29 @@ Run `npm test` to apply `schema.sql` and every migration to a throwaway local Po
 - **Categories** (admins): rename (English and French), reorder, hide, add. The starting list is Congregation, Volunteers, Visitors, Community Contacts, New Believers, Guest Speakers, Online Attendees.
 - **EN | FR** in the header switches the newer screens (People, profiles…) between English and French on that device.
 - Admins edit people; anyone on the serving team can read the directory and write notes.
+
+## Messages (email and text)
+
+**Contact** opens the composer from: the people you've ticked (or everyone shown, including a saved filter) on **People**, a person's profile, a team on **Teams & positions**, or a service's team on **Live**. Choose **Text (SMS)**, **Email** or **Both**, write the message (**Insert first name** adds `{first_name}`), check who won't receive it (opted out, no mobile, no email), review the total, and send. The counter shows characters and text segments as you type.
+
+- Admins can message anyone; coordinators can message the people on their own team(s). The server checks this again.
+- Opted-out people are always skipped. Replying **STOP** (or ARRÊT) to a text opts the person out; **START** opts them back in. Every email has an unsubscribe link.
+- A retried or double-clicked send never goes out twice. Each person can send up to 5 messages per 10 minutes, to at most 1,000 people at a time.
+- **Reports → Sent messages** lists every send and, for each person, whether it was sent, delivered, failed or skipped, and why.
+
+**Setting it up (Vercel → Project → Settings → Environment Variables):**
+
+| Variable | What it is |
+|---|---|
+| `SUPABASE_DB_URL` | Supabase → Project Settings → Database → Connection string, **Transaction pooler** (port 6543), with your database password filled in |
+| `UNSUBSCRIBE_SECRET` | Any long random text (signs the unsubscribe links). For example, the output of `openssl rand -hex 32` |
+| `APP_URL` | Your site address, e.g. `https://servicesync-ruby.vercel.app` |
+| `TWILIO_SID`, `TWILIO_TOKEN` | Twilio Console → Account Info |
+| `TWILIO_FROM` | Your Twilio number (`+1…`) or Messaging Service SID (`MG…`) |
+| `RESEND_API_KEY` | Resend → API Keys |
+| `MAIL_FROM` | e.g. `Mont Carmel <noreply@yourdomain.org>` (the domain must be verified in Resend) |
+
+Then in Twilio, set the number's (or Messaging Service's) **incoming message webhook** to `https://<your site>/api/twilio-inbound` (HTTP POST). US carriers require registering business texting (A2P 10DLC) in Twilio before bulk texts are delivered; this can take a couple of weeks.
 
 ## Dashboard, check-in and events
 

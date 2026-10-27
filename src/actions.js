@@ -3,7 +3,7 @@ import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
 import { ic } from './icons.js';
-import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity, loadProfile } from './data.js';
+import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity, loadProfile, loadMessages, loadRecipients, sendMessage } from './data.js';
 import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
@@ -20,6 +20,9 @@ import { activityListHtml } from './views/activity.js';
 import { peopleRowsHtml, bulkBarHtml, personForm, categoryForm, saveFilterForm, manageFiltersForm } from './views/directory.js';
 import { filterPeople, toCsv, cats, catOf } from './people.js';
 import { t } from './i18n.js';
+import { composeView, counterHtml } from './views/compose.js';
+import { sourceIds, audience, newKey } from './compose.js';
+import { msgState } from './views/messages.js';
 import { parseCsv, detectColumns, memberRows, newFamilies } from './importer.js';
 import { fold } from './members.js';
 import { timeRange } from './views/shared.js';
@@ -412,6 +415,47 @@ export const H = {
     ui.catDraft = null; reload(); toast(t('saved'));
   },
 
+  /* messaging */
+  contact(el) {
+    const d = el.dataset; const src = { kind: d.src };
+    if (d.src === 'selection') src.ids = [...ui.psel];
+    if (d.src === 'filter') src.filters = { ...ui.pf };
+    if (d.src === 'person') src.id = d.id;
+    if (d.src === 'service') Object.assign(src, { sunId: d.sun, svc: d.svc });
+    if (d.src === 'team') src.teamId = d.team;
+    const ids = sourceIds(src);
+    ui.compose = { key: newKey(), source: src, ids, label: d.label || '', channel: 'sms', subject: '', body: '', step: 'edit', error: '', result: null };
+    modal(composeView());
+  },
+  cmpChannel(el) { ui.compose.channel = el.value; modal(composeView()); document.getElementById('cmpBody')?.focus(); },
+  cmpSubject(el) { ui.compose.subject = el.value; },
+  cmpBody(el) { ui.compose.body = el.value; const n = document.getElementById('cmpCount'); if (n) n.innerHTML = counterHtml(); },
+  cmpMerge() {
+    const b = document.getElementById('cmpBody'); if (!b) return;
+    const at = b.selectionStart ?? b.value.length; b.value = b.value.slice(0, at) + '{first_name}' + b.value.slice(b.selectionEnd ?? at);
+    ui.compose.body = b.value; b.focus(); b.selectionStart = b.selectionEnd = at + 12; const n = document.getElementById('cmpCount'); if (n) n.innerHTML = counterHtml();
+  },
+  cmpReview() {
+    const c = ui.compose; c.body = val('cmpBody') || c.body; c.subject = document.getElementById('cmpSubject') ? val('cmpSubject') : c.subject;
+    if (!c.body.trim()) { toast(t('message')); document.getElementById('cmpBody')?.focus(); return; }
+    if (c.channel !== 'sms' && !c.subject.trim()) { toast(t('subject')); document.getElementById('cmpSubject')?.focus(); return; }
+    c.step = 'confirm'; c.error = ''; modal(composeView());
+  },
+  cmpBack() { ui.compose.step = 'edit'; modal(composeView()); },
+  async cmpSend() {
+    const c = ui.compose; if (c.step === 'sending') return;
+    const a = audience(c.ids, c.channel);
+    c.step = 'sending'; modal(composeView());
+    const r = await sendMessage({ key: c.key, channel: c.channel, subject: c.subject.trim(), body: c.body.trim(), recipients: a.people.map(m => m.id), source: { ...c.source, label: c.label } });
+    if (ui.compose !== c) return;
+    if (r.ok) { c.step = 'done'; c.result = r.body; if (ui.msgs) ui.msgs.loaded = false; } else { c.step = 'confirm'; c.error = r.error; }
+    modal(composeView());
+  },
+  cmpViewSent() { closeModal(); ui.tab = 'reports'; ui.rsub = 'messages'; ui.rep = null; if (ui.msgs) ui.msgs.loaded = false; render(); },
+  msgRefresh() { const m = msgState(); m.loaded = false; m.open = null; render(); },
+  msgOpen(el) { const m = msgState(); m.open = el.dataset.id; m.recips = null; render(); window.scrollTo(0, 0); loadRecipients(m.open); },
+  msgClose() { msgState().open = null; render(); },
+
   /* events */
   evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
   evDay(el) { ui.evDay = el.dataset.date || null; render(); },
@@ -520,6 +564,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick']);
-export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel']);
+export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
 export { TABS, ic };

@@ -1,6 +1,6 @@
 import { S, T, ui, me } from '../state.js';
 import { esc, fmt, ym } from '../util.js';
-import { t } from '../i18n.js';
+import { t, t as tr } from '../i18n.js';
 import { vDirectory } from './directory.js';
 import { ic } from '../icons.js';
 import { people, activePeople, myPerson, loadFor, fairness, heavy, positionsOf, teamsList, allPositions, qualified } from '../domain.js';
@@ -33,7 +33,7 @@ function vTeams(seg) {
   if (!teams.length) return h + `<div class="card empty">${me.admin ? 'No teams yet. Create one, for example Worship, Sound or Ushers.' : 'No teams set up yet.'}</div>`;
   h += '<div class="grid2">' + teams.map(t => {
     const list = pos.filter(p => p.team === t.id);
-    return `<div class="card"><div class="ch"><h3>${esc(t.name)}</h3>${me.admin ? `<div class="row"><button class="btn link" data-act="editPosition" data-team="${esc(t.id)}">${ic('plus')} Position</button><button class="ib" data-act="editTeam" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">${ic('pencil')}</button></div>` : ''}</div>
+    return `<div class="card"><div class="ch"><h3>${esc(t.name)}</h3><div class="row">${ui.peopleMissing ? '' : `<button class="ib" data-act="contact" data-src="team" data-team="${esc(t.id)}" data-label="${esc(t.name)}" aria-label="${esc(tr('contactTeam'))}" title="${esc(tr('contactTeam'))}">${ic('send')}</button>`}${me.admin ? `<button class="btn link" data-act="editPosition" data-team="${esc(t.id)}">${ic('plus')} Position</button><button class="ib" data-act="editTeam" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">${ic('pencil')}</button>` : ''}</div></div>
       ${list.length ? list.map(p => {
         const who = ppl.filter(x => qualified(x.id, p.id));
         return `<div class="prow"><div class="row" style="justify-content:space-between"><div class="row"><b>${esc(p.name)}</b>${p.active === false ? '<span class="pill mute">PAUSED</span>' : ''}</div><div class="row"><span class="pill mute">NEED ${p.min} · WANT ${p.pref}</span>${me.admin ? `<button class="ib" data-act="editPosition" data-id="${esc(p.id)}" aria-label="Edit ${esc(p.name)}">${ic('pencil')}</button>` : ''}</div></div>

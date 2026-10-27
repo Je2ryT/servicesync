@@ -31,7 +31,9 @@ export function bulkBarHtml() {
   return `<span>${esc(t('shown', { n: list.length }))}${n ? ' · <b>' + esc(t('selected', { n })) + '</b>' : ''}</span>
     <div class="row">${n ? `<button class="btn link" data-act="pSelNone">${esc(t('clearSelection'))}</button>` : `<button class="btn link" data-act="pSelAll" ${list.length ? '' : 'disabled'}>${esc(t('selectAll'))}</button>`}
       ${me.admin && n ? `<select data-act="pBulkCat" aria-label="${esc(t('setCategory'))}"><option value="">${esc(t('setCategory'))}</option>${opt(cats().map(c => [c.id, catName(c.id, lang())]), '')}</select>` : ''}
-      <button class="btn" data-act="pExport" ${list.length ? '' : 'disabled'}>${ic('share')} ${esc(t('exportCsv'))}${n ? ` (${n})` : ''}</button></div>`;
+      <button class="btn" data-act="pExport" ${list.length ? '' : 'disabled'}>${ic('share')} ${esc(t('exportCsv'))}${n ? ` (${n})` : ''}</button>
+      ${n ? `<button class="btn cta" data-act="contact" data-src="selection" data-label="${esc(t('selected', { n }))}">${ic('send')} ${esc(t('contactN', { n }))}</button>`
+        : `<button class="btn" data-act="contact" data-src="filter" data-label="${esc(t('shown', { n: list.length }))}" ${list.length ? '' : 'disabled'}>${ic('send')} ${esc(t('contactShown'))}</button>`}</div>`;
 }
 
 export function vDirectory(seg) {
@@ -72,7 +74,7 @@ function vProfile(id) {
   const weeks = attendanceStrip(p?.att || []);
   return `<div class="head prof-head"><div><button class="btn link noprint" data-act="personBack">${ic('left')} ${esc(t('back'))}</button>
       <div class="row" style="gap:14px;flex-wrap:nowrap"><div class="avatar sm" aria-hidden="true">${esc(initials(m))}</div><div><h1>${esc(m.name)}</h1><div class="row">${catPill(m)}${famName ? `<span class="pill mute">${esc(famName.toUpperCase())}</span>` : ''}${m.smsOptOut ? `<span class="pill warn">${esc(t('smsOptOut'))}</span>` : ''}${m.emailOptOut ? `<span class="pill warn">${esc(t('emailOptOut'))}</span>` : ''}</div></div></div></div>
-      ${me.admin ? `<button class="btn" data-act="personEdit" data-id="${esc(id)}">${ic('pencil')} ${esc(t('edit'))}</button>` : ''}</div>
+      <div class="row"><button class="btn" data-act="contact" data-src="person" data-id="${esc(id)}" data-label="${esc(m.name)}">${ic('send')} ${esc(t('contact'))}</button>${me.admin ? `<button class="btn" data-act="personEdit" data-id="${esc(id)}">${ic('pencil')} ${esc(t('edit'))}</button>` : ''}</div></div>
     <div class="prof-grid">
       <div class="prof-col">
         <section class="card"><div class="ch"><h3>${esc(t('details'))}</h3></div><div class="kv">
