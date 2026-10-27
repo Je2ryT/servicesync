@@ -46,19 +46,21 @@ const flush = () => new Promise(r => setTimeout(r, 0));
 describe('layout rules', () => {
   beforeEach(seed);
   it('cleans placeholders: unknown roles become Other, unknown colours fall back to the role’s colour', () => {
-    expect(LY.cleanTag({ id: 'x', role: 'bishop', label: ' Usher ', color: 'pink' })).toEqual({ id: 'x', role: 'other', label: 'Usher', color: 'white', pos: '' });
+    expect(LY.cleanTag({ id: 'x', role: 'bishop', label: ' Usher ', color: 'teal' })).toEqual({ id: 'x', role: 'other', label: 'Usher', color: 'white', pos: '' });
     expect(LY.cleanTag({ role: 'pastor' }, 2)).toEqual({ id: 'r2', role: 'pastor', label: '', color: 'blue', pos: '' });
+    expect(LY.COLORS).toEqual(['blue', 'white', 'yellow', 'red', 'green', 'purple', 'orange', 'pink', 'gray']);
+    expect(LY.cleanTag({ role: 'choir', color: 'green' }).color).toBe('green');
     expect(LY.tagLabel({ role: 'interpreter' }, 'fr')).toBe('Interprète'); expect(LY.tagLabel({ role: 'other', label: 'Reader' }, 'fr')).toBe('Reader');
   });
-  it('names: typed first, then the chosen position, then a position with the same name (either language); declined people are left out', () => {
+  it('names start empty; only typed names fill them. The schedule (chosen position, else same name in either language, declined left out) is a suggestion', () => {
     const rows = LY.layoutOf({ id: '2026-11-01', ...S.sun['2026-11-01'] }, 'en');
-    expect(rows.map(r => [r.start, r.item, r.tags.map(x => [LY.tagLabel(x), x.color, x.names.join(',') || '—', x.typed])])).toEqual([
-      ['9:00 AM', 'Welcome', [['Moderator', 'yellow', 'Naomi Ilunga', false]]],
-      ['9:05 AM', 'Worship', [['Choir', 'blue', 'Jerry Kibombo', false]]],
-      ['9:30 AM', 'Sermon', [['Pastor', 'blue', 'Pastor Kabeya', true], ['Interpreter', 'white', '—', false], ['Reader', 'white', '—', false]]],
+    expect(rows.map(r => [r.start, r.item, r.tags.map(x => [LY.tagLabel(x), x.color, x.names.join(',') || '—', x.suggest.join(',') || '—'])])).toEqual([
+      ['9:00 AM', 'Welcome', [['Moderator', 'yellow', '—', 'Naomi Ilunga']]],
+      ['9:05 AM', 'Worship', [['Choir', 'blue', '—', 'Jerry Kibombo']]],
+      ['9:30 AM', 'Sermon', [['Pastor', 'blue', 'Pastor Kabeya', '—'], ['Interpreter', 'white', '—', '—'], ['Reader', 'purple', '—', '—']]],
     ]);
     expect(LY.positionFor({ role: 'interpreter' })).toBe('pint');   // "Interprète" matches Interpreter
-    expect(LY.openCount(rows)).toBe(2);
+    expect(LY.openCount(rows)).toBe(4);
   });
   it('French times', () => { expect(timeIn('11:30 AM', 'fr')).toBe('11 h 30'); expect(timeIn('1:45 PM', 'fr')).toBe('13 h 45'); expect(timeIn('12:05 AM', 'fr')).toBe('0 h 05'); expect(timeIn('9:00 AM', 'en')).toBe('9:00 AM'); });
 });
@@ -69,10 +71,16 @@ describe('layout screens', () => {
   it('shows the sheet with coloured tags and names, and a count of empty places', () => {
     render();
     expect($('.lay-head h2').textContent).toBe('Order of service');
-    expect($$('.ltag').map(x => x.className.replace('ltag ', '') + ':' + x.textContent)).toEqual(['yellow:Moderator', 'blue:Choir', 'blue:Pastor', 'white:Interpreter', 'white:Reader']);
-    expect($$('.lay-name.print-only').map(x => x.textContent || '___')).toEqual(['Naomi Ilunga', 'Jerry Kibombo', 'Pastor Kabeya', '___', '___']);
-    expect($('.pill.warn').textContent).toBe('2 places still empty');
-    expect($$('.lay-in')[0].placeholder).toBe('Naomi Ilunga'); expect($$('.lay-in')[2].value).toBe('Pastor Kabeya');
+    expect($$('.ltag').map(x => x.className.replace('ltag ', '') + ':' + x.textContent)).toEqual(['yellow:Moderator', 'blue:Choir', 'blue:Pastor', 'white:Interpreter', 'purple:Reader']);
+    expect($$('.lay-name.print-only').map(x => x.textContent || '___')).toEqual(['___', '___', 'Pastor Kabeya', '___', '___']);   // empty until someone types a name
+    expect($('.pill.warn').textContent).toBe('4 places still empty');
+    expect($$('.lay-in').map(i => [i.value, i.placeholder])).toEqual([['', 'Name'], ['', 'Name'], ['Pastor Kabeya', 'Name'], ['', 'Name'], ['', 'Name']]);
+    expect($$('.lay-sug').map(b => b.textContent)).toEqual(['Scheduled: Naomi Ilunga · use', 'Scheduled: Jerry Kibombo · use']);
+  });
+
+  it('“use” fills in the scheduled person', async () => {
+    render(); await H.layUse($('.lay-sug')); await flush();
+    expect(calls).toEqual([{ rpc: 'save_layout', args: { p_sunday: '2026-11-01', p_svc: 'en', p_item: 'e1', p_tag: 'r1', p_name: 'Naomi Ilunga' } }]);
   });
 
   it('typing a name saves it for this service only', async () => {
@@ -114,7 +122,7 @@ describe('layout screens', () => {
     ui.layout = null; ui.tab = 'templates'; render();
     await H.tSave({ dataset: { tid: 'tpl-en' } }); await flush();
     const saved = calls.find(c => c.table === 'templates' && c.op === 'upsert').payload;
-    expect(saved.items[2].roles).toEqual([{ id: 'r1', role: 'pastor', color: 'blue' }, { id: 'r2', role: 'interpreter', color: 'white' }, { id: 'r3', role: 'other', color: 'white', label: 'Reader' }]);
+    expect(saved.items[2].roles).toEqual([{ id: 'r1', role: 'pastor', color: 'blue' }, { id: 'r2', role: 'interpreter', color: 'white' }, { id: 'r3', role: 'other', color: 'purple', label: 'Reader' }]);
     expect(saved.items[1].roles).toEqual([{ id: 'r1', role: 'choir', color: 'blue', pos: 'pchoir' }]);
   });
 });

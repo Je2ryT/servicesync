@@ -15,6 +15,7 @@
 
 <header class="top">
   <div class="wrap bar">
+    <button class="menu-btn" data-act="navToggle" aria-label="Menu" aria-controls="tabs" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     <div class="logo"><img class="mc" src="/mc-logo.png" alt="Mont Carmel"><div><b>ServiceSync</b><small>MONT CARMEL</small></div></div>
     <nav class="tabs" role="tablist" id="tabs"></nav>
     <div class="who" id="who"></div>
@@ -22,6 +23,7 @@
   <div id="banner"></div>
 </header>
 <main class="wrap" id="main"><div class="empty">Loading the church schedule…</div></main>
+<div class="nav-scrim" data-act="navToggle"></div>
 <div id="overlay"></div>
 
 <script type="module" src="/src/main.js"></script>
