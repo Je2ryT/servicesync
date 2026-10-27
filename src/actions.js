@@ -218,18 +218,27 @@ export const H = {
     try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
   },
   newEvent() {
-    modal(`<h2>Add special event</h2><label class="f">Event name<input type="text" id="evTitle" placeholder="Christmas Eve service"></label><label class="f">Date<input type="date" id="evDate" value="${esc(sundaysOf(ui.month)[0])}"></label><label class="f">Start time<input type="time" id="evTime" value="18:00"></label>${layoutPicker('sp', SUNDAY)}<div class="row"><button class="btn cta" data-act="saveEvent">Add event</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>`);
+    modal(`<h2>Add special event</h2><label class="f">Event name<input type="text" id="evTitle" placeholder="Christmas Eve service"></label><label class="f">Date<input type="date" id="evDate" value="${esc(sundaysOf(ui.month)[0])}"></label><div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f" style="flex:1">Start time<input type="time" id="evTime" value="18:00"></label><label class="f" style="flex:1">${esc(t('endTimeOpt'))}<input type="time" id="evEnd"></label></div><p class="sub" style="margin:0">${esc(t('overnightHint'))}</p>${layoutPicker('sp', SUNDAY)}<div class="row"><button class="btn cta" data-act="saveEvent">Add event</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>`);
   },
   async saveEvent() {
-    const title = val('evTitle').trim(), date = val('evDate'), start = val('evTime') || '18:00'; const c = readPicker('sp');
+    const title = val('evTitle').trim(), date = val('evDate'), start = val('evTime') || '18:00', end = val('evEnd'); const c = readPicker('sp');
+    if (end && end === start) { toast(t('endSameAsStart')); return; }
     if (!title || !date) { toast('Give the event a name and a date.'); return; }
     if (pickerError(c)) { toast(t(pickerError(c))); return; }
     closeModal();
     const tpl = await applyPicker(c); if (tpl == null) return;
-    if (await saveSun(date + '-ev-' + uid(), { date, title, special: true, published: false, services: { ev: { start, tpl } } })) { ui.month = date.slice(0, 7); toast(`Added ${title}.`); }
+    const sid = date + '-ev-' + uid(); const ev = { start, tpl }; if (end) ev.end = end;
+    if (await saveSun(sid, { date, title, special: true, published: false, services: { ev } })) {
+      if (!ui.eventLinkMissing) await q(sb.from('events').insert({ title, date, start_time: start, end_time: end || null, service_id: sid, created_by: myPerson() }));   // and on the calendar
+      ui.month = date.slice(0, 7); reload(); toast(`Added ${title}.`);
+    }
   },
-  delEvent(el) { modal(`<h2>Remove this event?</h2><p class="sub">Its assignments and checklist progress go with it.</p><div class="row"><button class="btn cta" data-act="delEventYes" data-id="${esc(el.dataset.id)}">Remove</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>`); },
-  async delEventYes(el) { closeModal(); if (await q(sb.from('sundays').delete().eq('id', el.dataset.id))) reload(); },
+  delEvent(el) { modal(`<h2>Remove this event?</h2><p class="sub">Its calendar entry, assignments and checklist progress go with it.</p><div class="row"><button class="btn cta" data-act="delEventYes" data-id="${esc(el.dataset.id)}">Remove</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>`); },
+  async delEventYes(el) {
+    closeModal(); const id = el.dataset.id;
+    if (!ui.eventLinkMissing) await q(sb.from('events').delete().eq('service_id', id));   // its calendar entry goes too
+    if (await q(sb.from('sundays').delete().eq('id', id))) reload();
+  },
 
   /* answering and swapping */
   async respond(el) {
@@ -691,25 +700,37 @@ export const H = {
     if (!title) { toast('Give the event a title.'); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('Pick a date.'); return; }
     const start = val('eStart'), end = val('eEnd');
-    if (start && end && end <= start) { toast('The end time has to be after the start.'); return; }
+    if (start && end && end === start) { toast(t('endSameAsStart')); return; }   // an earlier end time means the next day
     const row = { title, date, start_time: start || null, end_time: end || null, location: val('eLoc').trim() || null, description: val('eDesc').trim() || null };
     const pick = document.getElementById('evLp') ? readPicker('ev') : { mode: 'none' };   // read before the form closes
     if (pickerError(pick)) { toast(t(pickerError(pick))); return; }
-    const plan = pick.mode !== 'none';
     const id = el.dataset.id; closeModal();
     const saved = id ? await q(sb.from('events').update(row).eq('id', id).select('id').single()) : await q(sb.from('events').insert({ ...row, created_by: myPerson() }).select('id').single());
     if (!saved) return;
-    const eid = id || saved.id; const linked = id && S.events[id]?.serviceId && S.sun[S.events[id].serviceId] ? S.events[id].serviceId : null;
-    const tpl = plan ? await applyPicker(pick) : null;
-    if (plan && tpl != null && !ui.eventLinkMissing) {
-      // keep the event's service (a special event in the schedule) in step with the event
-      const sid = linked || date + '-ev-' + uid(); const old = S.sun[sid] || { published: false };
-      const ok = await saveSun(sid, { ...old, date, title, special: true, services: { ev: { ...(old.services?.ev || {}), start: start || '18:00', tpl } } });
-      if (ok && !linked) await q(sb.from('events').update({ service_id: sid }).eq('id', eid));
-    } else if (!plan && linked) await q(sb.from('events').update({ service_id: null }).eq('id', eid));   // unlink; the service stays in the schedule
-    ui.evMonth = date.slice(0, 7); ui.evDay = date; reload(); toast(id ? 'Event saved.' : `Added ${title}.`);
+    if (!ui.eventLinkMissing) {
+      // Every calendar event has its service on the Schedule (for the serving team), with or without a layout.
+      const eid = id || saved.id; const linked = id && S.events[id]?.serviceId && S.sun[S.events[id].serviceId] ? S.events[id].serviceId : null;
+      const tpl = await applyPicker(pick);
+      if (tpl != null) {
+        const sid = linked || date + '-ev-' + uid(); const old = S.sun[sid] || { published: false };
+        const ev = { ...(old.services?.ev || {}), start: start || '18:00', tpl }; if (end) ev.end = end; else delete ev.end;
+        const ok = await saveSun(sid, { ...old, date, title, special: true, services: { ev } });
+        if (ok && !linked) await q(sb.from('events').update({ service_id: sid }).eq('id', eid));
+      }
+    }
+    ui.evMonth = date.slice(0, 7); ui.evDay = date; reload(); toast(id ? 'Event saved.' : t('addedToSchedule', { title }));
   },
-  async delCalEvent(el) { if (!tapTwice(el, 'Tap again to delete')) return; closeModal(); if (await q(sb.from('events').delete().eq('id', el.dataset.id))) reload(); },
+  async delCalEvent(el) {
+    if (!tapTwice(el, t('tapDeleteBoth'))) return; closeModal();
+    const sid = S.events[el.dataset.id]?.serviceId;
+    if (sid && S.sun[sid]?.special) await q(sb.from('sundays').delete().eq('id', sid));   // its Schedule entry goes too (the database does this as well after 016)
+    if (await q(sb.from('events').delete().eq('id', el.dataset.id))) reload();
+  },
+  goSchedule(el) {
+    const doc = docOf(el.dataset.id); if (!doc) return; closeModal();
+    ui.tab = 'calendar'; ui.month = doc.date.slice(0, 7); ui.showPast = doc.date < T.todayIso; ui.layout = null; render();
+    setTimeout(() => document.getElementById('sun-' + doc.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50);
+  },
 
   /* teams & positions */
   editTeam(el) {

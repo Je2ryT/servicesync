@@ -37,13 +37,20 @@ export const checklist = () => cfg().checklist;
 export function tplFor(doc, svc) {
   // A service can carry its own layout: '@en' / '@fr' follow the Sunday layouts, anything else is a template id.
   const t = templates(); const own = doc?.services?.[svc]?.tpl;
+  if (own === '-') return { name: '', order: [] };   // planned on the Schedule without a layout yet
   const id = own === '@en' ? cfg().enTpl : own === '@fr' ? cfg().frTpl : own || (svc === 'ev' ? undefined : cfg()[svc + 'Tpl']);
   return t[id] || Object.values(t).find(x => x.lang === SVC[svc].lang) || Object.values(t)[0] || { name: '', order: [] };
 }
+/** An event's end time, when it has one ('HH:MM'; earlier than the start = the next day). */
+export const endOf = (doc, svc) => (svc === 'ev' ? doc?.services?.ev?.end || '' : '');
 export const startOf = (doc, svc) => (svc === 'ev' ? (doc?.services?.ev?.start || '18:00') : SVC[svc].start);
 export const total = t => (t.order || []).reduce((a, o) => a + (+o.min || 0), 0);
 /** Minutes from midnight when a service starts and ends. */
-export function windowOf(doc, svc) { const s = toMin(startOf(doc, svc)); return { start: s, end: s + Math.max(total(tplFor(doc, svc)), 1) }; }
+export function windowOf(doc, svc) {
+  const s = toMin(startOf(doc, svc)); const e = endOf(doc, svc);
+  if (e) { let m = toMin(e); if (m <= s) m += 24 * 60; return { start: s, end: m }; }   // an event's own end time (after midnight = next day)
+  return { start: s, end: s + Math.max(total(tplFor(doc, svc)), 1) };
+}
 export const svcKeys = doc => (doc?.special ? ['ev'] : ['en', 'fr']);
 export const svcName = (doc, svc) => (svc === 'ev' ? (doc?.title || 'Special event') : SVC[svc].name);
 
