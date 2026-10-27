@@ -104,13 +104,6 @@ describe('administrators', () => {
     expect($$('.adm-row')[0].querySelector('[data-act="adminRemove"]').disabled).toBe(true);
   });
 
-  it('administrators without full access see the list but cannot change it', () => {
-    S.admins['jerry@x.com'].perms = ['people']; me.perms = ['people']; render();
-    expect($('.adm-add')).toBeNull(); expect($('main').textContent).toContain('Only administrators with full access');
-    expect($$('[data-act="adminAccess"], [data-act="adminRemove"]').length).toBe(0);
-    me.perms = null;
-  });
-
   it('each area only shows its own controls', async () => {
     const { can } = await import('../src/access.js');
     me.perms = ['people']; expect([can('people'), can('schedule'), can('templates')]).toEqual([true, false, false]);
@@ -118,5 +111,17 @@ describe('administrators', () => {
     ui.tab = 'roster'; ui.psub = 'people'; render(); expect($$('[data-act="editPerson"]').length).toBe(1);   // only their own card (days off)
     me.perms = null; render(); expect($$('[data-act="editPerson"]').length).toBeGreaterThan(1);
     me.admin = false; me.perms = []; expect(can('people')).toBe(false);
+  });
+
+  it('administrators without full access, and team members, never see who the administrators are', () => {
+    S.admins = { 'jerry@x.com': { perms: ['people'] } }; me.perms = ['people']; ui.psub = 'admins'; render();
+    expect($$('[data-act="psub"]').map(b => b.dataset.v)).not.toContain('admins'); expect($('.adm-row')).toBeNull();
+    ui.psub = 'people'; render(); expect($('main').textContent).not.toContain('Administrator');
+    me.admin = false; me.perms = []; S.admins = {}; me.email = 'anna@x.com';
+    for (const [tab, psub] of [['home'], ['roster', 'people'], ['roster', 'all'], ['roster', 'teams'], ['swaps'], ['calendar']]) {
+      ui.tab = tab; if (psub) ui.psub = psub; render();
+      expect($('main').textContent, tab + '/' + (psub || '')).not.toMatch(/Administrator|Admin\b/);
+    }
+    me.admin = true; me.perms = null; me.email = 'jerry@x.com';
   });
 });

@@ -29,6 +29,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 011 | `011-service-layout.sql` | Printable service layout: names typed for one service | Placeholders themselves live in the templates, so the layout shows and prints before 011; typing a name needs 011. |
 | 012 | `012-admin-permissions.sql` | Different access for each administrator (including Live service for the timer) | Everyone who is an administrator today keeps full access; narrow it on People → Administrators afterwards. |
 | 013 | `013-volunteers-from-members.sql` | Add volunteers from the members list | A member added to the serving team is linked to their existing record instead of creating a second one. |
+| 014 | `014-hide-admin-list.sql` | Only full administrators see who the administrators are | Others see only their own access. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -248,7 +249,7 @@ Go to **People → Administrators** (administrators only). Pick someone from the
 | Reports | Activity log and weekly report emails |
 | Templates | Order of service, placeholders, checklists |
 
-Every administrator can still see everything, write service reports and check people in. Anyone on the roster can still run the timer on published Sundays. Only administrators with full access add or remove administrators or change their access, and there is always at least one with full access. The database enforces all of this, not just the screens.
+Every administrator can still see everything, write service reports and check people in. Anyone on the roster can still run the timer on published Sundays. Only administrators with full access see the list of administrators, add or remove them, or change their access, and there is always at least one with full access. The database enforces all of this, not just the screens.
 
 Before migration 010, or if you're ever locked out, you can do the same in the Supabase SQL Editor:
 ```sql
