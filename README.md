@@ -8,18 +8,21 @@ Sunday service scheduling for Mont Carmel Church: teams and positions (coordinat
   - `src/` — the app (`main.js` starts it; `domain.js` holds the scheduling rules; `views/` one file per screen)
   - `schema.sql` — database setup for a brand-new project
   - `migrations/` — database updates, run in order after `schema.sql`
-  - `tests/` — run with `npm test`
+  - `tests/` — run with `npm test` (`tests/db/` runs the migrations on a local Postgres)
 
-## Updating an existing install to teams & positions
+## Updating an existing install
 
-Do these two steps close together, in this order:
+Database updates live in `migrations/`, numbered in order. For each one: in Supabase open **SQL Editor → New query**, paste the whole file, click **Run**, then merge the matching pull request so Vercel publishes the app. Every migration only adds things and is safe to run twice. Until a migration has run, the screens that need it show **Database update needed** and everything else keeps working.
 
-1. In Supabase, open **SQL Editor → New query**, paste all of `migrations/001-teams-and-positions.sql`, and click **Run**. It only adds tables; nothing is deleted. Everyone on the roster becomes a *Coordinator* in a *Service coordination* team, and every existing assignment and confirm/decline carries over.
-2. Merge the `teams-positions` branch into `main` on GitHub. Vercel builds and publishes it.
+| # | File | Adds | Notes |
+|---|------|------|-------|
+| 001 | `001-teams-and-positions.sql` | Teams, positions, assignments | Run it, then merge soon after: changes made in the old app in between don't carry over. Everyone on the roster becomes a *Coordinator*. |
+| 002 | `002-live-timer.sql` | Live service timer | |
+| 003 | `003-members-attendance-events.sql` | Members, check-in, events | |
+| 004 | `004-service-reports.sql` | Service reports | |
+| 005 | `005-activity-log.sql` | Activity log (who changed what) | Starts recording from the moment it runs; earlier changes aren't in the log. |
 
-Then open **People → Teams & positions** to add teams such as Worship, Sound or Ushers, and tick on each person which positions they can serve.
-
-Until step 2 is live, the old app keeps working, but anything changed in it after step 1 won't carry over. If the new app shows **Database update needed**, step 1 hasn't been run yet.
+Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
 ## Dashboard, check-in and events
 
@@ -29,8 +32,6 @@ Until step 2 is live, the old app keeps working, but anything changed in it afte
 - **Events**: the church calendar by month, with Sundays marked. Admins add, edit and delete events.
 - After signing in, the Mont Carmel logo plays a short intro (once per browser tab; tap to skip).
 - The serving-team calendar tab is now called **Schedule**.
-
-**Updating an existing install:** run `migrations/003-members-attendance-events.sql` in Supabase. Until then, Check-in and Events ask for the update and everything else keeps working.
 
 ## Service reports
 
@@ -43,7 +44,11 @@ Until step 2 is live, the old app keeps working, but anything changed in it afte
 
 Notes save when you click out of the box ("Saved" appears). Two people can write notes on different segments at the same time without overwriting each other. Open a report from the list or from **Report & notes** on the Live screen. Admins can write any report; people on the roster can write reports for published Sundays.
 
-**Updating an existing install:** run `migrations/004-service-reports.sql` in Supabase.
+## Activity log
+
+**Reports → Activity log** (administrators only) lists every change to the schedule, serving team, members, check-ins, events, templates and reports: who made it, when, and in plain words ("Anna confirmed: Jerry as Coordinator · English Service, Nov 1"). Search it, or filter by area or by person. Bursts such as an import show as one line ("added 120 members") that expands.
+
+The database records the changes itself, so nothing done through the app can skip the log, and nobody can edit or delete entries through the app. Live-timer and checklist ticks aren't logged.
 
 ## Live service timer
 
@@ -58,8 +63,6 @@ On **Live**, each service has a **Service timer** card. Press **Start service** 
 The address looks like `…/#stage/2026-11-01/en`, so a booth laptop or TV can bookmark it. It needs someone signed in. From a keyboard, **Space** or **→** = next, **←** = back, **P** = pause, **+** = add a minute (for people allowed to run the timer).
 
 Admins can run any timer; people on the roster can run timers on published Sundays.
-
-**Updating an existing install:** run `migrations/002-live-timer.sql` in Supabase (SQL Editor) before merging the timer into `main`. If you merge first, everything else keeps working and the timer card asks for the update.
 
 ## Working on the code
 
