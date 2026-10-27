@@ -7,6 +7,8 @@ import { timerOf, minutes } from '../timer.js';
 import { attendanceFor, mname } from '../members.js';
 import { canRun } from './timer.js';
 import { timeRange } from './shared.js';
+import { vActivity, actState } from './activity.js';
+import { loadActivity } from '../data.js';
 
 export const reportOf = (sunId, svc) => S.reports[sunId + '|' + svc] || { notes: {}, summary: '', followups: '' };
 
@@ -68,7 +70,17 @@ function vReport(doc, svc) {
 }
 
 /* ---------- list of reports ---------- */
+const subnav = () => (me.admin ? `<div><div class="seg"><button data-act="rsub" data-v="reports" aria-pressed="${ui.rsub !== 'activity'}">Service reports</button><button data-act="rsub" data-v="activity" aria-pressed="${ui.rsub === 'activity'}">Activity log</button></div></div>` : '');
+
 export function vReports() {
+  if (me.admin && ui.rsub === 'activity') {
+    const a = actState(); if (!a.loaded && !a.loading) setTimeout(() => loadActivity(), 0);
+    return subnav() + vActivity();
+  }
+  return subnav() + vServiceReports();
+}
+
+function vServiceReports() {
   if (ui.reportsMissing) return '<div><h1>Reports</h1></div><div class="card empty">This needs a database update. Run <code>migrations/004-service-reports.sql</code> in Supabase, then reload.</div>';
   if (ui.rep) { const [sun, svc] = ui.rep.split('|'); const doc = docOf(sun); if (doc && visible(doc)) return vReport(doc, svc); ui.rep = null; }
   const week = new Date(T.now); week.setDate(week.getDate() + 7); const until = week.toISOString().slice(0, 10);

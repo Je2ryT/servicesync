@@ -21,7 +21,7 @@ setNow(new Date());
 
 export const ui = {
   tab: 'home', month: ym(T.now), liveIdx: null, liveSvc: 'en', tsub: 'order', psub: 'people',
-  drafts: {}, chkDraft: null, stage: null, timerMissing: false, membersMissing: false, ciSvc: null, ciQuery: '', imp: null, rep: null, reportsMissing: false, repSave: {}, evMonth: null, evDay: null, intro: false, authMsg: '', authSent: false, authView: 'landing', session: null, ready: false, needsMigration: false,
+  drafts: {}, chkDraft: null, stage: null, timerMissing: false, membersMissing: false, ciSvc: null, ciQuery: '', imp: null, rep: null, reportsMissing: false, repSave: {}, rsub: 'reports', act: null, evMonth: null, evDay: null, intro: false, authMsg: '', authSent: false, authView: 'landing', session: null, ready: false, needsMigration: false,
 };
 try { const t = localStorage.getItem('ss-tab'); if (t && TABS.some(x => x[0] === t)) ui.tab = t; } catch (e) { /* storage unavailable */ }
 if (typeof location !== 'undefined' && TABS.some(x => x[0] === location.hash.slice(1))) ui.tab = location.hash.slice(1);
