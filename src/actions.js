@@ -140,7 +140,7 @@ export const H = {
   openLive(el) { const list = docs().filter(visible); const i = list.findIndex(d => d.id === el.dataset.id); if (i < 0) { toast('This Sunday is not planned yet.'); return; } ui.liveIdx = i; ui.liveSvc = el.dataset.svc; ui.tab = 'live'; render(); window.scrollTo(0, 0); },
   liveNav(el) { ui.liveIdx += +el.dataset.k; render(); },
   liveSvc(el) { ui.liveSvc = el.dataset.svc; render(); },
-  month(el) { ui.month = shiftMonth(ui.month, +el.dataset.k); render(); },
+  month(el) { ui.month = shiftMonth(ui.month, +el.dataset.k); ui.showPast = false; render(); },
   item(el) { toggleTick('live:' + ui.liveSvc + ':' + el.dataset.k, el.getAttribute('aria-pressed') !== 'true'); },
   tick(el) { toggleTick(el.dataset.k, el.getAttribute('aria-pressed') !== 'true'); },
   async tmr(el) {
@@ -220,6 +220,8 @@ export const H = {
   async declineSwap(el) { if (await q(sb.from('swaps').update({ status: 'declined' }).eq('id', el.dataset.id))) reload(); },
   async cancelSwap(el) { if (await q(sb.from('swaps').delete().eq('id', el.dataset.id))) reload(); },
 
+  togglePast() { ui.showPast = !ui.showPast; render(); },
+  monthNow() { ui.month = T.thisSun.slice(0, 7); ui.showPast = false; render(); },   // the month of the next Sunday
   /* people */
   psub(el) { ui.psub = el.dataset.v; ui.person = null; ui.prof = null; render(); },
   editPerson(el) {

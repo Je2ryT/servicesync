@@ -1,4 +1,4 @@
-import { ui, me } from '../state.js';
+import { ui, me, T } from '../state.js';
 import { SVC } from '../config.js';
 import { esc, fmt, monthName } from '../util.js';
 import { ic } from '../icons.js';
@@ -8,14 +8,18 @@ import { can, isFull } from '../access.js';
 
 export function vCalendar() {
   const m = ui.month; const st = monthState(m); const rows = monthRows(m);
-  const crit = rows.some(r => r.doc && svcKeys(r.doc).some(s => asgOf(r.id, s).some(a => broken(a))));
+  const crit = rows.some(r => r.date >= T.todayIso && r.doc && svcKeys(r.doc).some(s => asgOf(r.id, s).some(a => broken(a))));
   let h = `<div class="head"><div><h1>${esc(monthName(m))}</h1><p class="sub">Fill every position for each service. The number on each position is assigned / preferred.</p></div>
     <div class="row"><button class="btn sq" data-act="month" data-k="-1" aria-label="Previous month">${ic('left')}</button><button class="btn sq" data-act="month" data-k="1" aria-label="Next month">${ic('right')}</button>
     <button class="btn navy" data-act="share">${ic('share')} Share</button>
     ${can('schedule') ? `<button class="btn" data-act="autofill" data-m="${m}">Auto-fill</button><button class="btn ${st === 'published' ? '' : 'cta'}" data-act="publishMonth" ${st === 'none' ? 'disabled' : ''}>${st === 'published' ? 'Unpublish' : 'Publish'}</button>` : ''}</div></div>
     <div class="row">${st === 'none' ? '<span class="pill mute">NOT PLANNED</span>' : `<span class="pill ${st === 'published' ? 'ok' : 'warn'}">${st === 'published' ? 'Published' : 'Draft'}</span>`}${st !== 'none' ? `<span class="pill ${crit ? 'bad' : 'ok'}">${crit ? 'Rule conflicts' : 'No critical issues'}</span>` : ''}${can('schedule') ? `<button class="btn link" data-act="newEvent">${ic('plus')} Special event</button>` : ''}</div>`;
+  // Past dates are hidden (today stays until the day is over); a link shows them again.
+  const past = rows.filter(r => r.date < T.todayIso); const shown = ui.showPast ? rows : rows.filter(r => r.date >= T.todayIso);
   h += '<div class="split"><div style="display:grid;gap:16px">';
-  for (const r of rows) {
+  if (past.length) h += `<div class="past-bar"><span class="sub" style="margin:0">${ui.showPast ? `Showing ${past.length} past date${past.length === 1 ? '' : 's'}` : `${past.length} past date${past.length === 1 ? '' : 's'} hidden`}</span><button class="btn link" data-act="togglePast">${ui.showPast ? 'Hide past dates' : 'Show past dates'}</button></div>`;
+  if (!shown.length) h += `<div class="card empty">${rows.length ? 'Every date in this month has passed.' : 'No Sundays this month.'} ${m < T.todayIso.slice(0, 7) ? '<button class="btn link" data-act="monthNow">Go to this month</button>' : '<button class="btn link" data-act="month" data-k="1">Next month</button>'}</div>`;
+  for (const r of shown) {
     const show = !r.doc || visible(r.doc);
     h += `<div class="card sun"><div class="sh"><h2>${esc(r.doc?.special ? r.doc.title || 'Special event' : fmt(r.date, { weekday: 'long', month: 'long', day: 'numeric' }))}</h2><div class="row">${r.doc?.special ? `<span class="sub" style="margin:0">${esc(fmt(r.date, { weekday: 'long', month: 'long', day: 'numeric' }))}</span>` : ''}${r.doc && show ? `<button class="btn link" data-act="openLive" data-id="${esc(r.id)}" data-svc="${svcKeys(r.doc)[0]}">Live view</button>` : ''}${can('schedule') && r.doc?.special ? `<button class="btn danger" data-act="delEvent" data-id="${esc(r.id)}">Remove</button>` : ''}</div></div>
       <div class="svcs" ${r.doc?.special ? 'style="grid-template-columns:1fr"' : ''}>${svcKeys(r.doc).map(s => svcCell(r, s, show)).join('')}</div></div>`;
