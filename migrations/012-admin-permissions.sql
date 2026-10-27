@@ -4,6 +4,7 @@
 --
 --   • admins.perms: the areas an administrator manages. Empty (null) = full access.
 --       schedule   plan months, publish, teams, positions, roster, swaps, days off, events
+--       live       run the service timer (and phone remote) for any service, even before it's published
 --       people     edit and delete members, categories, families, other people's notes and filters
 --       messaging  text or email anyone; see every sent message and opt-out
 --       followups  edit flows and steps; delete follow-ups
@@ -11,14 +12,14 @@
 --       templates  order of service, checklists, settings
 --   • Only full administrators add or remove administrators or change their access,
 --     and there is always at least one full administrator.
---   • Every administrator keeps read access (published or not) and can write service reports,
---     run timers and check people in, as before.
+--   • Every administrator keeps read access (published or not) and can write service reports
+--     and check people in, as before. Anyone on the roster still runs the timer on published Sundays.
 --   • Each "admins manage …" rule below switches from is_admin() to has_perm('<area>').
 
 alter table admins add column if not exists perms text[];
 alter table admins drop constraint if exists admins_perms_known;
 alter table admins add constraint admins_perms_known
-  check (perms is null or perms <@ array['schedule', 'people', 'messaging', 'followups', 'reports', 'templates']::text[]);
+  check (perms is null or perms <@ array['schedule', 'live', 'people', 'messaging', 'followups', 'reports', 'templates']::text[]);
 
 create or replace function has_perm(p text) returns boolean
 language sql stable security definer set search_path = public as $$
@@ -98,6 +99,10 @@ end $$;
 
 do $$
 begin
+  -- timer_control: administrators need the Live area; the roster rule (published Sundays) stays.
+  if to_regprocedure('timer_control(text,text,text,jsonb)') is not null then
+    execute replace(pg_get_functiondef('timer_control(text,text,text,jsonb)'::regprocedure), 'if not (is_admin() or (', 'if not (has_perm(''live'') or (');
+  end if;
   -- approve_swap: same body, but needs the schedule area.
   if to_regprocedure('approve_swap(text,text)') is not null then
     execute replace(pg_get_functiondef('approve_swap(text,text)'::regprocedure), 'if not is_admin() then', 'if not has_perm(''schedule'') then');

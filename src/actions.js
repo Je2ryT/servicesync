@@ -11,7 +11,7 @@ import {
   asgOf, planAutofill, candidates, allPositions, teamsList, qualified, positionsList, tplFor, people,
 } from './domain.js';
 import { timerOf } from './timer.js';
-import { canRun } from './views/timer.js';
+import { canRun, remoteForm } from './views/timer.js';
 import { memberForm, ciListHtml, ciService } from './views/checkin.js';
 import { eventForm } from './views/events.js';
 import { attKey } from './members.js';
@@ -121,6 +121,7 @@ async function runTimer(sun, svc, op, arg = {}) {
     if (!items.length) { toast('Add an order of service on the Templates tab first.'); return; }
     arg = { items };
   }
+  if (ui.stage?.remote) navigator.vibrate?.(15);   // a little buzz on the phone remote
   await timerAction(sun, svc, op, arg);
 }
 export function stageKey(e) {
@@ -151,6 +152,9 @@ export const H = {
     if (op === 'message') { const inp = document.getElementById(`tmsg-${sun}-${svc}`); arg = { text: el.dataset.clear ? '' : (inp?.value || '') }; inp?.blur(); if (el.dataset.clear && inp) inp.value = ''; }
     await runTimer(sun, svc, op, arg);
   },
+  remoteHere(el) { closeModal(); location.hash = `#remote/${el.dataset.sun}/${el.dataset.svc}`; },
+  remoteShow(el) { modal(remoteForm(el.dataset.sun, el.dataset.svc)); },
+  async remoteCopy(el) { try { await navigator.clipboard.writeText(el.dataset.url); toast(t('copied')); } catch (e) { document.querySelector('.rm-link input')?.select(); } },
   stageOpen(el) {
     const url = location.pathname + '#stage/' + el.dataset.sun + '/' + el.dataset.svc;
     if (!window.open(url, '_blank')) location.href = url;   // pop-up blocked: open it here

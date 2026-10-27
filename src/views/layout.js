@@ -7,7 +7,7 @@ import { t, tIn, lang } from '../i18n.js';
 import { svcName, allPositions, startOf, tplFor, total } from '../domain.js';
 import { clock } from '../util.js';
 import { ROLES, COLORS, tagLabel, layoutOf, openCount, positionFor } from '../layout.js';
-import { canRun } from './timer.js';
+import { canWrite as canRun } from './timer.js';
 import { can, isFull } from '../access.js';
 
 export const sheetLang = svc => (svc === 'fr' ? 'fr' : svc === 'en' ? 'en' : lang());

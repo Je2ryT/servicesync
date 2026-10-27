@@ -6,7 +6,7 @@ import { docs, docOf, visible, svcKeys, svcName, tplFor, startOf, asgOf, pname, 
 import { timerOf, minutes } from '../timer.js';
 import { attendanceFor, mname } from '../members.js';
 import { isVisitor } from '../people.js';
-import { canRun } from './timer.js';
+import { canWrite as canRun } from './timer.js';
 import { timeRange } from './shared.js';
 import { vActivity, actState } from './activity.js';
 import { loadActivity, loadMessages } from '../data.js';

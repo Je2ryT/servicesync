@@ -30,8 +30,8 @@ if (typeof location !== 'undefined' && TABS.some(x => x[0] === location.hash.sli
 /* The stage screen lives at #stage/<sunday id>/<service>, so a laptop or TV can open it directly.
    Remembered across the sign-in link, which replaces the address. */
 export function readStage() {
-  const m = typeof location !== 'undefined' && location.hash.match(/^#stage\/([\w-]+)\/(en|fr|ev)$/);
-  ui.stage = m ? { sun: m[1], svc: m[2] } : null;
+  const m = typeof location !== 'undefined' && location.hash.match(/^#(stage|remote)\/([\w-]+)\/(en|fr|ev)$/);
+  ui.stage = m ? { sun: m[2], svc: m[3], remote: m[1] === 'remote' } : null;   // #remote/… is the phone remote
   try { if (ui.stage) localStorage.setItem('ss-stage', JSON.stringify({ hash: location.hash, at: Date.now() })); } catch (e) { /* storage unavailable */ }
   return ui.stage;
 }
