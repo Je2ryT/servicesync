@@ -10,6 +10,13 @@ const D = {
     adminAddedBy: 'Added by {who}', adminAlready: '{email} is already an administrator.', adminAdded: '{email} is now an administrator.', adminRemoved: '{email} is no longer an administrator.',
     adminRemoveTitle: 'Remove {name} as administrator?', adminRemoveBody: 'They keep their place on the serving team and can still sign in, with a team member’s access.', adminRemoveSelf: 'This is you. You will lose administrator access straight away.',
     adminLast: 'This is the only administrator. Add someone else first.', adminRemove: 'Remove', adminPill: 'Administrator', adminsHelp: 'They sign in with this email. The change applies the next time they open or reload ServiceSync.',
+    serviceLayout: 'Service layout', layoutSub: 'The order of service with who leads each part, ready to print before the service.', layoutEditHint: 'Type a name to change it for this service only; leave it empty to use the schedule.',
+    layoutTitle: 'Order of service', colTime: 'Time', colPart: 'Part', colWho: 'Who', minShort: '{n} min', layoutNotes: 'Notes', layoutPrinted: 'Printed {d}', printLayout: 'Print',
+    layoutOpen: '{n} places still empty', layoutOpen1: '{n} place still empty', layoutFull: 'Everyone is in', namePh: 'Name', fromSchedule: 'From the schedule', layoutBtn: 'Layout',
+    noPlaceholders: 'No placeholders yet. Add them under each part on Templates → Order of service.', openTemplates: 'Open Templates',
+    placeholders: 'Placeholders', placeholdersFor: 'Placeholders for “{item}”', placeholdersSub: 'Who leads this part. Each one prints as a coloured tag with the person’s name next to it.',
+    addPlaceholder: 'Add placeholder', editPlaceholders: 'Placeholders', noPlaceholdersYet: 'None yet.', role: 'Role', tagColor: 'Tag colour', color_blue: 'Blue', color_white: 'White', color_yellow: 'Yellow',
+    customLabel: 'Label, e.g. Usher', fillFrom: 'Fill from position', fillAuto: 'Automatic', fillHelp: 'Names fill in from the schedule: from the position you pick, or a position with the same name (Pastor, Interpreter…). Anyone can type a different name on the day.', done: 'Done', layoutSaveFail: 'Not saved.', allServices: 'All services', svcEnName: 'English Service', svcFrName: 'French Service',
     people: 'People', everyone: 'Everyone', servingTeam: 'Serving team', teamsPositions: 'Teams & positions',
     peopleSub: '{n} people in the church directory', search: 'Search by name, phone or email',
     category: 'Category', allCategories: 'All categories', language: 'Language', anyLanguage: 'Any language',
@@ -78,6 +85,13 @@ const D = {
     adminAddedBy: 'Ajouté par {who}', adminAlready: '{email} est déjà administrateur.', adminAdded: '{email} est maintenant administrateur.', adminRemoved: '{email} n’est plus administrateur.',
     adminRemoveTitle: 'Retirer {name} des administrateurs ?', adminRemoveBody: 'La personne reste dans l’équipe de service et peut toujours se connecter, avec l’accès d’un membre de l’équipe.', adminRemoveSelf: 'C’est vous. Vous perdrez l’accès administrateur immédiatement.',
     adminLast: 'C’est le seul administrateur. Ajoutez d’abord quelqu’un d’autre.', adminRemove: 'Retirer', adminPill: 'Administrateur', adminsHelp: 'La personne se connecte avec cet e-mail. Le changement s’applique la prochaine fois qu’elle ouvre ou recharge ServiceSync.',
+    serviceLayout: 'Déroulement du culte', layoutSub: 'L’ordre du culte avec qui anime chaque moment, prêt à imprimer avant le culte.', layoutEditHint: 'Tapez un nom pour le changer pour ce culte seulement ; laissez vide pour reprendre le programme.',
+    layoutTitle: 'Ordre du culte', colTime: 'Heure', colPart: 'Moment', colWho: 'Qui', minShort: '{n} min', layoutNotes: 'Notes', layoutPrinted: 'Imprimé le {d}', printLayout: 'Imprimer',
+    layoutOpen: '{n} places encore vides', layoutOpen1: '{n} place encore vide', layoutFull: 'Tout le monde est prévu', namePh: 'Nom', fromSchedule: 'D’après le programme', layoutBtn: 'Déroulement',
+    noPlaceholders: 'Pas encore d’emplacements. Ajoutez-les sous chaque moment dans Modèles → Ordre du culte.', openTemplates: 'Ouvrir les modèles',
+    placeholders: 'Emplacements', placeholdersFor: 'Emplacements pour « {item} »', placeholdersSub: 'Qui anime ce moment. Chacun s’imprime comme une étiquette de couleur avec le nom de la personne.',
+    addPlaceholder: 'Ajouter un emplacement', editPlaceholders: 'Emplacements', noPlaceholdersYet: 'Aucun pour l’instant.', role: 'Rôle', tagColor: 'Couleur de l’étiquette', color_blue: 'Bleu', color_white: 'Blanc', color_yellow: 'Jaune',
+    customLabel: 'Libellé, p. ex. Huissier', fillFrom: 'Remplir depuis le poste', fillAuto: 'Automatique', fillHelp: 'Les noms viennent du programme : du poste choisi, ou d’un poste du même nom (Pasteur, Interprète…). Chacun peut taper un autre nom le jour même.', done: 'Terminé', layoutSaveFail: 'Non enregistré.', allServices: 'Tous les cultes', svcEnName: 'Culte en anglais', svcFrName: 'Culte en français',
     people: 'Personnes', everyone: 'Tout le monde', servingTeam: 'Équipe de service', teamsPositions: 'Équipes et postes',
     peopleSub: '{n} personnes dans l’annuaire de l’église', search: 'Rechercher par nom, téléphone ou courriel',
     category: 'Catégorie', allCategories: 'Toutes les catégories', language: 'Langue', anyLanguage: 'Toutes les langues',
@@ -142,9 +156,12 @@ export const lang = () => (ui.lang === 'fr' ? 'fr' : 'en');
 export const locale = () => (lang() === 'fr' ? 'fr-FR' : 'en-US');
 
 /** Translate a key, filling {placeholders}. Falls back to English, then the key itself. */
-export function t(key, vars = {}) {
-  if (vars.n === 1 && (D[lang()][key + '1'] ?? D.en[key + '1'])) key += '1';   // singular forms: "1 person"
-  const s = D[lang()][key] ?? D.en[key] ?? key;
+export function t(key, vars = {}) { return tIn(lang(), key, vars); }
+/** The same, in a given language (a French service prints in French whatever the screen language). */
+export function tIn(l, key, vars = {}) {
+  l = l === 'fr' ? 'fr' : 'en';
+  if (vars.n === 1 && (D[l][key + '1'] ?? D.en[key + '1'])) key += '1';   // singular forms: "1 person"
+  const s = D[l][key] ?? D.en[key] ?? key;
   return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
 }
 export const hasKey = key => key in D.en;

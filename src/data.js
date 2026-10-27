@@ -101,7 +101,7 @@ export async function timerAction(sunId, svc, op, arg = {}) {
 }
 
 /** A service_reports row as the app uses it. */
-export const reportRow = r => ({ notes: r.notes || {}, summary: r.summary || '', followups: r.followups || '', updatedAt: Date.parse(r.updated_at), by: r.updated_by });
+export const reportRow = r => ({ notes: r.notes || {}, summary: r.summary || '', followups: r.followups || '', layout: r.layout || {}, updatedAt: Date.parse(r.updated_at), by: r.updated_by });
 
 /** Save one part of a service report (a segment's note, the summary or follow-ups). */
 export async function saveReport(sunId, svc, key, item, text) {
