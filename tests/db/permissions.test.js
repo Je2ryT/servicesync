@@ -70,4 +70,15 @@ describe('administrator access levels (012)', () => {
     expect((await roleOf(dbi, PASTOR)).admin).toBe(true);
     expect(await roleOf(dbi, ANNA)).toMatchObject({ admin: false, anyAdmin: false, coordinatorId: 'anna' });
   });
+
+  it('Live area: admins need it to run the timer; the serving team still can on published Sundays', async () => {
+    const items = JSON.stringify({ items: [{ id: 'e1', item: 'Welcome', min: 5 }] });
+    await admin(db, `update admins set perms = '{people}' where email = $1`, [PASTOR]);
+    await expect(as(db, PASTOR, `select timer_control('2026-11-08', 'en', 'start', $1::jsonb)`, [items])).rejects.toThrow(/roster/);
+    await admin(db, `update admins set perms = '{people,live}' where email = $1`, [PASTOR]);
+    expect((await as(db, PASTOR, `select (timer_control('2026-11-08', 'en', 'start', $1::jsonb)).seg`, [items]))[0].seg).toBe(0);   // unpublished Sunday, but Live
+    expect((await as(db, ANNA, `select (timer_control('2026-11-01', 'en', 'start', $1::jsonb)).seg`, [items]))[0].seg).toBe(0);     // roster, published
+    await expect(as(db, ANNA, `select timer_control('2026-11-08', 'en', 'start', $1::jsonb)`, [items])).rejects.toThrow(/roster/);  // roster, unpublished
+    await expect(as(db, JERRY, `update admins set perms = '{live,cooking}' where email = $1`, [PASTOR])).rejects.toThrow(/admins_perms_known/);
+  });
 });

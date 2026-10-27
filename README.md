@@ -27,7 +27,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 009 | `009-reports.sql` | Attendance & people reports, weekly report emails | Reports read what's already there, so they include history from before 009. Weekly emails need the messaging settings and `CRON_SECRET`. |
 | 010 | `010-admins.sql` | Manage administrators in the app (People → Administrators) | Emails are stored lower-case, the last administrator can't be removed, and changes go in the activity log. |
 | 011 | `011-service-layout.sql` | Printable service layout: names typed for one service | Placeholders themselves live in the templates, so the layout shows and prints before 011; typing a name needs 011. |
-| 012 | `012-admin-permissions.sql` | Different access for each administrator | Everyone who is an administrator today keeps full access; narrow it on People → Administrators afterwards. |
+| 012 | `012-admin-permissions.sql` | Different access for each administrator (including Live service for the timer) | Everyone who is an administrator today keeps full access; narrow it on People → Administrators afterwards. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -147,7 +147,9 @@ On **Live**, each service has a **Service timer** card. Press **Start service** 
 **Stage screen.** **Stage screen** opens the timer in a new window: segment name, a giant countdown, what's next, the time of day, and whether the service is on time. It turns amber near the end of a segment and red when it runs over. Press **Full screen** (or **F**). The French service's screen is in French.
 The address looks like `…/#stage/2026-11-01/en`, so a booth laptop or TV can bookmark it. It needs someone signed in. From a keyboard, **Space** or **→** = next, **←** = back, **P** = pause, **+** = add a minute (for people allowed to run the timer).
 
-Admins can run any timer; people on the roster can run timers on published Sundays.
+**Phone remote.** Press **Remote** on the timer card. Scan the QR code with a phone (or copy the link, `…/#remote/2026-11-01/en`), sign in, and the phone becomes a remote: a big **Next** button, **Back**, **Pause**, **−1 / +1 / +5 min**, a stage message and **End service**. Every press updates the stage screen, the Live tab and any other remote within a second (through Supabase Realtime), so the timer can be run from the front row while the stage screen sits on the booth computer. Several remotes can be used at once; the phone stays awake while the remote is open.
+
+Who can run the timer: administrators with **Full access** or the **Live service** area (any service, even before it's published), and people on the roster on published Sundays. Others see the countdown without the buttons.
 
 ## Working on the code
 
@@ -228,13 +230,14 @@ Go to **People → Administrators** (administrators only). Pick someone from the
 | Area | What it allows |
 |---|---|
 | Schedule & teams | Plan and publish months, teams, positions, the serving team, swaps, days off, events |
+| Live service | Run the service timer and phone remote for any service, even before it's published |
 | People | Edit and remove members, categories, families, import; manage anyone's notes and saved filters |
 | Messaging | Text or email anyone; see every sent message and unsubscribe |
 | Follow-ups | Edit follow-up flows and steps; delete follow-ups |
 | Reports | Activity log and weekly report emails |
 | Templates | Order of service, placeholders, checklists |
 
-Every administrator can still see everything, write service reports, run the live timer and check people in. Only administrators with full access add or remove administrators or change their access, and there is always at least one with full access. The database enforces all of this, not just the screens.
+Every administrator can still see everything, write service reports and check people in. Anyone on the roster can still run the timer on published Sundays. Only administrators with full access add or remove administrators or change their access, and there is always at least one with full access. The database enforces all of this, not just the screens.
 
 Before migration 010, or if you're ever locked out, you can do the same in the Supabase SQL Editor:
 ```sql

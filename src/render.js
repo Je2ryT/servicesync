@@ -9,7 +9,7 @@ import { vLive } from './views/live.js';
 import { vPeople } from './views/people.js';
 import { vSwaps } from './views/swaps.js';
 import { vTemplates } from './views/templates.js';
-import { vStage } from './views/timer.js';
+import { vStage, vRemote } from './views/timer.js';
 import { vCheckin } from './views/checkin.js';
 import { vEvents } from './views/events.js';
 import { vReports } from './views/reports.js';
@@ -36,7 +36,7 @@ export function render() {
   if (!ui.ready) { tabs.hidden = true; main.innerHTML = '<div class="empty">Loading the church schedule…</div>'; return; }
   if (ui.needsMigration) { tabs.hidden = true; main.className = 'wrap center'; main.innerHTML = vNeedsMigration(); return; }
   if (!me.admin && !mp) { tabs.hidden = true; main.className = 'wrap center'; main.innerHTML = vNotMember(); return; }
-  if (ui.stage) { stageMode(true); main.className = 'stage-wrap'; main.innerHTML = vStage(); return; }
+  if (ui.stage) { stageMode(true); main.className = 'stage-wrap'; main.innerHTML = ui.stage.remote ? vRemote() : vStage(); return; }
   tabs.hidden = false;
   main.innerHTML = (VIEWS[ui.tab] || vHome)();
 }

@@ -1,12 +1,18 @@
 /* The live timer: controls on the Live tab, and the full-screen stage screen. */
 import { ui, me } from '../state.js';
+import { can } from '../access.js';
+import { t, locale } from '../i18n.js';
+import qrcode from 'qrcode-generator';
 import { SVC } from '../config.js';
 import { esc, parse, clock as clockText } from '../util.js';
 import { ic } from '../icons.js';
 import { docOf, visible, svcName, tplFor, startOf, myPerson } from '../domain.js';
 import { timerOf, timerView, serverNow, scheduledStart, countdown, elapsedText, minutes, driftText, labels } from '../timer.js';
 
-export const canRun = doc => !!doc && (me.admin || (!!myPerson() && !!doc.published));
+/** Run the timer: administrators with the Live area (any service), or the serving team once the Sunday is published. */
+export const canRun = doc => !!doc && (can('live') || (!!myPerson() && !!doc.published));
+/** Write service reports and the layout: any administrator, or the serving team once published. */
+export const canWrite = doc => !!doc && (me.admin || (!!myPerson() && !!doc.published));
 const langOf = svc => SVC[svc]?.lang || 'en';
 const plan = (doc, svc) => (tplFor(doc, svc).order || []).map(o => ({ id: o.id, item: o.item, min: +o.min || 0 }));
 
@@ -48,7 +54,7 @@ function statusText(v, L, svc, doc) {
 export function vTimerCard(doc, svc) {
   if (ui.timerMissing) return `<div class="card"><div class="ch"><h3>Service timer</h3></div><p class="sub" style="margin:0">The timer needs a database update. Run <code>migrations/002-live-timer.sql</code> in Supabase.</p></div>`;
   const v = viewFor(doc, svc); const L = labels('en'); const can = canRun(doc);
-  const stage = `<button class="btn" data-act="stageOpen" data-sun="${esc(doc.id)}" data-svc="${svc}">${ic('screen')} Stage screen</button>`;
+  const stage = `<span class="row"><button class="btn" data-act="remoteShow" data-sun="${esc(doc.id)}" data-svc="${svc}">${ic('phone')} ${esc(t('remote'))}</button><button class="btn" data-act="stageOpen" data-sun="${esc(doc.id)}" data-svc="${svc}">${ic('screen')} Stage screen</button></span>`;
   let ctl = '';
   if (!can) ctl = '<p class="sub" style="margin:0">People on the roster can run the timer once this Sunday is published.</p>';
   else if (v.phase === 'idle') ctl = `<div class="tctl">${btn(doc, svc, 'start', `${ic('play')} Start service`, 'cta big', v.items.length ? '' : 'disabled')}</div>`;
@@ -94,6 +100,46 @@ export function vStage() {
   </div>`;
 }
 
+/* ---------- Phone remote (#remote/<sunday>/<service>) ----------
+   The same buttons as the Live tab, sized for a phone. Every press goes to the database and every
+   screen (stage, Live tab, other remotes) follows within a second through Supabase Realtime. */
+export const remoteUrl = (sun, svc) => `${location.origin}${location.pathname}#remote/${sun}/${svc}`;
+export function remoteQr(url) { const q = qrcode(0, 'M'); q.addData(url); q.make(); return q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); }
+
+export function remoteForm(sun, svc) {
+  const doc = docOf(sun); const url = remoteUrl(sun, svc);
+  return `<h2>${esc(t('remoteTitle'))}</h2><p class="sub" style="margin:0">${esc(svcName(doc, svc))} · ${esc(parse(doc.date).toLocaleDateString(locale(), { weekday: 'long', month: 'long', day: 'numeric' }))}</p>
+    <div class="rm-qr" aria-label="${esc(t('remoteScan'))}">${remoteQr(url)}</div>
+    <p class="sub" style="margin:0;text-align:center">${esc(t('remoteScan'))}</p>
+    <div class="rm-link"><input type="text" readonly value="${esc(url)}" aria-label="${esc(t('remoteLink'))}" onclick="this.select()"><button class="btn" data-act="remoteCopy" data-url="${esc(url)}">${esc(t('copy'))}</button></div>
+    <p class="sub" style="margin:0">${esc(t('remoteHelp'))}</p>
+    <div class="row"><button class="btn cta" data-act="remoteHere" data-sun="${esc(sun)}" data-svc="${esc(svc)}">${ic('phone')} ${esc(t('remoteHere'))}</button><button class="btn ghost" data-act="closeModal">${esc(t('close'))}</button></div>`;
+}
+
+export function vRemote() {
+  const { sun, svc } = ui.stage; const doc = docOf(sun);
+  if (!doc || !visible(doc) || !(svc === 'ev' ? doc.special : !doc.special)) {
+    return `<div class="remote"><div class="stage-empty"><p>${esc(t('remoteMissing'))}</p><button class="btn" data-act="stageExit">${esc(t('backToApp'))}</button></div></div>`;
+  }
+  const L = labels(locale() === 'fr-FR' ? 'fr' : 'en'); const v = viewFor(doc, svc); const run = canRun(doc);
+  const b = (op, label, cls = '', extra = '') => btn(doc, svc, op, label, cls, extra);
+  let ctl;
+  if (!run) ctl = `<p class="rm-note">${esc(t(me.admin ? 'remoteNoLive' : 'remoteNotYet'))}</p>`;
+  else if (v.phase === 'idle') ctl = `<div class="rm-main">${b('start', `${ic('play')} ${esc(t('startService'))}`, 'cta rm-big', v.items.length ? '' : 'disabled')}</div>`;
+  else if (v.phase === 'ended') ctl = `<div class="rm-row">${b('back', `${ic('left')} ${esc(t('reopenLast'))}`, 'rm-mid')}</div>`;
+  else ctl = `<div class="rm-main">${b('next', v.next ? `${esc(t('rmNext'))} ${ic('right')}` : `${esc(t('rmFinish'))} ${ic('check')}`, 'cta rm-big')}</div>
+    <div class="rm-row">${b('back', `${ic('left')} ${esc(t('rmBack'))}`, 'rm-mid')}${v.phase === 'paused' ? b('resume', `${ic('play')} ${esc(t('rmResume'))}`, 'rm-mid') : b('pause', `${ic('pause')} ${esc(t('rmPause'))}`, 'rm-mid')}</div>
+    <div class="rm-row rm-adds">${b('add', '−1 min', '', 'data-sec="-60"')}${b('add', '+1 min', '', 'data-sec="60"')}${b('add', '+5 min', '', 'data-sec="300"')}</div>
+    <div class="tmsg rm-msg"><input type="text" class="draft" id="tmsg-${esc(doc.id)}-${svc}" maxlength="140" placeholder="${esc(t('stageMsgPh'))}" value="${esc(v.message)}" aria-label="${esc(t('stageMsgPh'))}">
+      ${b('message', esc(t('rmShow')))}${v.message ? b('message', esc(t('rmClear')), 'ghost', 'data-clear="1"') : ''}</div>
+    <div class="rm-row">${b('end', esc(t('endService')), 'ghost', `data-confirm="${esc(t('tapAgainEnd'))}"`)}</div>`;
+  return `<div class="remote lv-${v.level} ph-${v.phase}" data-remote>
+    <div class="rm-top"><button class="ib" data-act="stageExit" aria-label="${esc(t('backToApp'))}">${ic('left')}</button><div><b>${esc(svcName(doc, svc))}</b><span>${esc(parse(doc.date).toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' }))} · ${esc(t('remote'))}</span></div><span class="rm-live" title="${esc(t('remoteSynced'))}"><i></i>${esc(t('live'))}</span></div>
+    ${face(doc, svc, v, L)}
+    ${ctl}
+  </div>`;
+}
+
 /* ---------- ticking ---------- */
 const nowText = () => new Date(serverNow()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
@@ -103,7 +149,7 @@ export function tickTimers() {
   const now = serverNow();
   for (const el of faces) {
     const doc = docOf(el.dataset.tmr); if (!doc) continue;
-    const svc = el.dataset.svc; const v = viewFor(doc, svc, now); const L = labels(el.closest('[data-stage]') ? langOf(svc) : 'en');
+    const svc = el.dataset.svc; const v = viewFor(doc, svc, now); const L = labels(el.closest('[data-stage]') ? langOf(svc) : el.closest('[data-remote]') && locale() === 'fr-FR' ? 'fr' : 'en');
     const set = (f, txt) => { const n = el.querySelector(`[data-f="${f}"]`); if (n && n.textContent !== txt) n.textContent = txt; };
     if (v.phase === 'idle') {
       const s = v.untilStart != null && v.untilStart > 0;
@@ -113,6 +159,7 @@ export function tickTimers() {
     const bar = el.querySelector('[data-f="bar"]'); if (bar) bar.style.width = Math.round(v.progress * 100) + '%';
     const cls = `tface lv-${v.level} ph-${v.phase}`; if (el.className !== cls) el.className = cls;
     const st = el.closest('[data-stage]'); if (st) { const c = `stage lv-${v.level} ph-${v.phase}`; if (st.className !== c) st.className = c; }
+    const rm = el.closest('[data-remote]'); if (rm) { const c = `remote lv-${v.level} ph-${v.phase}`; if (rm.className !== c) rm.className = c; }
   }
   const n = document.querySelector('[data-f="now"]'); if (n) { const t = nowText(); if (n.textContent !== t) n.textContent = t; }
 }
