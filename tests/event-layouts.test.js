@@ -75,23 +75,74 @@ describe('calendar ↔ layouts', () => {
     expect(servicesOn('2026-11-15')).toEqual([]); expect(servicesOn('2026-11-08').length).toBe(2);
   });
 
-  it('“Plan it as a service” creates the service with the chosen order of service and links the event', async () => {
+  const pick = (mode, tpl) => { for (const r of $$('input[name="evMode"]')) r.checked = r.value === mode; if (tpl) $('#evTpl').value = tpl; };
+
+  it('a new event offers: no layout, Sunday, French, or custom', () => {
     H.editEvent({ dataset: { date: '2026-11-07' } });
-    $('#eTitle').value = 'Youth night'; $('#eStart').value = '19:30'; $('#ePlan').checked = true; $('#eTpl').value = 'tpl-pr';
+    expect($$('input[name="evMode"]').map(r => r.value)).toEqual(['none', 'en', 'fr', 'custom']);
+    expect($('input[name="evMode"]:checked').value).toBe('none');
+    expect($$('#evTpl option').map(o => o.textContent)).toEqual(['Prayer night', '＋ Create a new layout']);   // the Sunday layouts aren't repeated under Custom
+  });
+
+  it('picking the Sunday layout plans the event as a service that follows the Sunday layout', async () => {
+    H.editEvent({ dataset: { date: '2026-11-07' } });
+    $('#eTitle').value = 'Youth night'; $('#eStart').value = '19:30'; pick('en');
     await H.saveCalEvent({ dataset: {} }); await flush();
     const svc = calls.find(c => c.saveSun);
     expect(svc.saveSun).toMatch(/^2026-11-07-ev-/);
-    expect(svc.d).toMatchObject({ date: '2026-11-07', title: 'Youth night', special: true, published: false, services: { ev: { start: '19:30', tpl: 'tpl-pr' } } });
+    expect(svc.d).toMatchObject({ date: '2026-11-07', title: 'Youth night', special: true, published: false, services: { ev: { start: '19:30', tpl: '@en' } } });
     expect(calls.find(c => c.op === 'update' && c.table === 'events')).toMatchObject({ payload: { service_id: svc.saveSun }, where: ['id', 'ev-new'] });
   });
 
-  it('editing a linked event keeps its service in step; unticking unlinks it', async () => {
-    H.editEvent({ dataset: { id: 'e1' } }); expect($('#ePlan').checked).toBe(true); expect($('#eTpl').value).toBe('tpl-pr');
+  it('custom: pick a layout already built', async () => {
+    H.editEvent({ dataset: { date: '2026-11-07' } }); $('#eTitle').value = 'Prayer'; pick('custom', 'tpl-pr');
+    await H.saveCalEvent({ dataset: {} }); await flush();
+    expect(calls.find(c => c.saveSun).d.services.ev.tpl).toBe('tpl-pr');
+  });
+
+  it('custom: create a new layout (blank or a copy of a Sunday layout)', async () => {
+    H.editEvent({ dataset: { date: '2026-11-07' } }); $('#eTitle').value = 'Conference'; pick('custom', '__new');
+    $('#evNewName').value = ''; await H.saveCalEvent({ dataset: {} });
+    expect(calls.length).toBe(0);   // a new layout needs a name
+    $('#evNewName').value = 'Conference day'; $('#evFrom').value = '@en';
+    await H.saveCalEvent({ dataset: {} }); await flush();
+    const tpl = calls.find(c => c.table === 'templates' && c.op === 'insert').payload;
+    expect(tpl).toMatchObject({ name: 'Conference day', lang: 'en', items: [{ id: 'e1', item: 'Welcome', min: 5, roles: [] }] });
+    expect(calls.find(c => c.saveSun).d.services.ev.tpl).toBe(tpl.id);
+    expect(S.tpl[tpl.id].name).toBe('Conference day');
+  });
+
+  it('editing a linked event keeps its service in step; “No layout” unlinks it', async () => {
+    H.editEvent({ dataset: { id: 'e1' } }); expect($('input[name="evMode"]:checked').value).toBe('custom'); expect($('#evTpl').value).toBe('tpl-pr');
     $('#eStart').value = '19:15'; await H.saveCalEvent({ dataset: { id: 'e1' } }); await flush();
     expect(calls.find(c => c.saveSun)).toMatchObject({ saveSun: '2026-11-20-ev-a', d: { title: 'Prayer night', published: true, services: { ev: { start: '19:15', tpl: 'tpl-pr' } } } });
     calls.length = 0;
-    H.editEvent({ dataset: { id: 'e1' } }); $('#ePlan').checked = false; await H.saveCalEvent({ dataset: { id: 'e1' } }); await flush();
+    H.editEvent({ dataset: { id: 'e1' } }); pick('none'); await H.saveCalEvent({ dataset: { id: 'e1' } }); await flush();
     expect(calls.some(c => c.saveSun)).toBe(false);
     expect(calls.filter(c => c.table === 'events').map(c => c.payload.service_id)).toContain(null);
+  });
+
+  it('a Sunday service can switch to another layout for that day only', async () => {
+    const { tplFor, docOf } = await import('../src/domain.js');
+    ui.layout = '2026-11-08|en'; ui.tab = 'reports'; render();
+    expect($('.lay-used').textContent).toContain('Layout: English Sunday Service');
+    H.layChange($('[data-act="layChange"]'));
+    for (const r of $$('input[name="svcMode"]')) r.checked = r.value === 'custom'; $('#svcTpl').value = 'tpl-pr';
+    await H.layChangeGo({ dataset: { id: '2026-11-08', svc: 'en' } }); await flush();
+    expect(calls.find(c => c.saveSun)).toMatchObject({ saveSun: '2026-11-08', d: { services: { en: { tpl: 'tpl-pr' }, fr: {} } } });
+    expect(tplFor(docOf('2026-11-08'), 'en').name).toBe('Prayer night');
+    expect(tplFor({ services: { ev: { tpl: '@fr' } } }, 'ev').name).toBeTruthy();
+  });
+
+  it('“Edit this layout” opens it on Templates', () => {
+    ui.layout = '2026-11-20-ev-a|ev'; ui.tab = 'reports'; render();
+    H.layEdit($('[data-act="layEdit"]'));
+    expect(ui.tab).toBe('templates'); expect($('#tpl-card-tpl-pr').classList.contains('focus')).toBe(true);
+  });
+
+  it('a layout used by an upcoming service can’t be deleted', async () => {
+    ui.tab = 'templates'; render();
+    await H.tDel({ dataset: { tid: 'tpl-pr' } });
+    expect(calls.some(c => c.table === 'templates' && c.op === 'delete')).toBe(false);
   });
 });

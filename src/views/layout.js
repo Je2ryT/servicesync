@@ -4,12 +4,14 @@ import { S, T, ui, me } from '../state.js';
 import { esc } from '../util.js';
 import { ic } from '../icons.js';
 import { t, tIn, lang } from '../i18n.js';
-import { svcName, allPositions, startOf, tplFor, total } from '../domain.js';
+import { svcName, allPositions, startOf, tplFor, total, cfg } from '../domain.js';
 import { clock } from '../util.js';
 import { ROLES, COLORS, tagLabel, layoutOf, openCount, positionFor } from '../layout.js';
 import { canWrite as canRun } from './timer.js';
 import { can, isFull } from '../access.js';
 
+/** The template id a service uses (its own choice, else the Sunday default). */
+export const usedTplId = (doc, svc) => { const own = doc?.services?.[svc]?.tpl; return own === '@en' ? cfg().enTpl : own === '@fr' ? cfg().frTpl : own || (svc === 'fr' ? cfg().frTpl : cfg().enTpl); };
 export const sheetLang = svc => (svc === 'fr' ? 'fr' : svc === 'en' ? 'en' : lang());
 /** "9:30 AM" in English, "9 h 30" in French. */
 export const timeIn = (hhmmAmPm, L) => {
@@ -32,7 +34,8 @@ export function vLayout(doc, svc) {
     return `<div class="lay-who">${tag(x, L)}${screen}<span class="lay-name print-only">${name ? esc(name) : '<span class="lay-blank"></span>'}</span>${!x.typed && x.suggest.length && edit ? `<button class="lay-sug noprint" data-act="layUse" data-sun="${esc(doc.id)}" data-svc="${esc(svc)}" data-item="${esc(r.id)}" data-tag="${esc(x.id)}" data-name="${esc(x.suggest.join(', '))}">${esc(t('useScheduled', { name: x.suggest.join(', ') }))}</button>` : ''}</div>`;
   };
   return `<div class="head noprint"><div><button class="btn link" data-act="layBack">${ic('left')} ${esc(t('allServices'))}</button><h1>${esc(t('serviceLayout'))}</h1>
-      <p class="sub">${esc(t('layoutSub'))}${edit ? ' ' + esc(t('layoutEditHint')) : ''}</p></div>
+      <p class="sub">${esc(t('layoutSub'))}${edit ? ' ' + esc(t('layoutEditHint')) : ''}</p>
+      <div class="lay-used"><span>${esc(t('layoutUsed', { name: tplFor(doc, svc).name || '—' }))}</span>${can('schedule') ? `<button class="btn link sm" data-act="layChange" data-id="${esc(doc.id)}" data-svc="${esc(svc)}">${esc(t('changeLayout'))}</button>` : ''}${can('templates') ? `<button class="btn link sm" data-act="layEdit" data-tpl="${esc(usedTplId(doc, svc))}">${esc(t('editLayout'))}</button>` : ''}</div></div>
       <div class="row">${open ? `<span class="pill warn">${esc(t('layoutOpen', { n: open }))}</span>` : anyTags ? `<span class="pill ok">${esc(t('layoutFull'))}</span>` : ''}<button class="btn cta" data-act="layPrint">${ic('printer')} ${esc(t('printLayout'))}</button></div></div>
     ${anyTags ? '' : `<div class="card empty noprint">${esc(t('noPlaceholders'))} ${can('templates') ? `<button class="btn link" data-act="tab" data-tab="templates">${esc(t('openTemplates'))}</button>` : ''}</div>`}
     <article class="card lay-sheet" lang="${L}">

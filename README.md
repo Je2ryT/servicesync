@@ -104,10 +104,17 @@ Everyone in check-in and the People list is a member. To make one of them a volu
 
 The new serving-team card is linked to the member's record (attendance, notes, follow-ups stay together); it never creates a duplicate. Members already on the serving team are greyed out in the list, and their profile shows **On the serving team**. This needs the Schedule & teams area (or full access).
 
-### From the Events calendar
+### Choosing a layout
 
-Every service on the calendar links to its layout. Click a Sunday to see its English and French services, each with **Service layout** and **Live**. Special services from the Schedule (Christmas Eve, a conference) appear on the calendar with the same buttons.
-For an event such as a prayer night, open it, tick **Plan it as a service** and pick its order of service. The event gets a serving team, live timer, report and printable layout, kept on the Schedule like a special event. Changing the event's date, title or time updates its service. Untick to unlink it; the service stays on the Schedule.
+Every event or service can use any layout (order of service):
+
+- **Events → Add event** (or edit one) has a **Layout** choice: **No layout** (just a calendar entry), **Sunday service layout**, **French service layout**, or **Custom layout**: pick one already built, or **Create a new layout** with a name, starting blank or as a copy of a Sunday layout. Picking a layout plans the event as a service (team, live timer, report, printable layout), kept on the Schedule.
+- **Schedule → Special event** offers the same choice.
+- On any service's printable layout, **Layout: … · Change** switches that one service (for example a Sunday with a baptism) to another layout without changing the others; **Edit this layout** opens it on Templates.
+- "Sunday service layout" and "French service layout" follow whatever Templates sets for the English and French services, so updating those updates every event that uses them.
+- A layout still used by an upcoming service can't be deleted.
+
+Every service on the Events calendar links to its layout: click a Sunday to see its English and French services, each with **Service layout** and **Live**. Special services from the Schedule appear on the calendar too.
 
 ## Attendance & people reports
 

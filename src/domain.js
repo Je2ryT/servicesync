@@ -35,7 +35,9 @@ export const templates = () => (Object.keys(S.tpl).length ? S.tpl : DEFAULT_TPL)
 export const cfg = () => ({ enTpl: 'tpl-en', frTpl: 'tpl-fr', checklist: DEFAULT_CHECK, ...(S.cfg.main || {}) });
 export const checklist = () => cfg().checklist;
 export function tplFor(doc, svc) {
-  const t = templates(); const id = svc === 'ev' ? doc?.services?.ev?.tpl : cfg()[svc + 'Tpl'];
+  // A service can carry its own layout: '@en' / '@fr' follow the Sunday layouts, anything else is a template id.
+  const t = templates(); const own = doc?.services?.[svc]?.tpl;
+  const id = own === '@en' ? cfg().enTpl : own === '@fr' ? cfg().frTpl : own || (svc === 'ev' ? undefined : cfg()[svc + 'Tpl']);
   return t[id] || Object.values(t).find(x => x.lang === SVC[svc].lang) || Object.values(t)[0] || { name: '', order: [] };
 }
 export const startOf = (doc, svc) => (svc === 'ev' ? (doc?.services?.ev?.start || '18:00') : SVC[svc].start);

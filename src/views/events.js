@@ -7,6 +7,7 @@ import { dbUpdateCard } from './checkin.js';
 import { can, isFull } from '../access.js';
 import { docs, docOf, visible, svcKeys, svcName, startOf, templates, tplFor } from '../domain.js';
 import { t } from '../i18n.js';
+import { layoutPicker } from './layoutpick.js';
 
 const timeText = e => (e.start ? clock(e.start) + (e.end ? ' – ' + clock(e.end) : '') : 'All day');
 
@@ -64,13 +65,12 @@ export function vEvents() {
         <div class="evl">${list.length ? list.map(e => (e.kind === 'svc' ? svcCard(e) : eventCard(e))).join('') : `<div class="empty">${sel ? 'Nothing planned this day.' : 'No upcoming events yet.'}${can('schedule') ? ` <button class="btn link" data-act="editEvent" data-date="${esc(sel || '')}">${ic('plus')} Add one</button>` : ''}</div>`}</div></div></div>`;
 }
 
-/** "Plan it as a service": order of service, team, timer, report and printable layout. */
+/** The event's layout: none (just a calendar entry), a Sunday layout, or a custom one. Picking one plans the
+    event as a service (order of service, team, timer, report, printable layout). */
 function planBox(e) {
-  const doc = e.serviceId && docOf(e.serviceId); const tpls = Object.entries(templates());
-  const cur = doc?.services?.ev?.tpl || tpls[0]?.[0] || '';
-  return `<div class="plan-box"><label class="plan-on"><input type="checkbox" id="ePlan" ${doc ? 'checked' : ''}><span><b>${esc(t('planAsService'))}</b><small>${esc(t('planAsServiceHelp'))}</small></span></label>
-    <label class="f">${esc(t('orderOfService'))}<select id="eTpl">${tpls.map(([id, x]) => `<option value="${esc(id)}" ${id === cur ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
-    ${doc ? `<p class="sub" style="margin:0">${esc(t('planLinked'))}</p>` : ''}</div>`;
+  const doc = e.serviceId && docOf(e.serviceId);
+  return `<div class="plan-box">${layoutPicker('ev', doc ? doc.services?.ev?.tpl || '' : '', { allowNone: true, newName: e.title })}
+    ${doc ? `<p class="sub" style="margin:0">${esc(t('planLinked'))}</p>` : `<p class="sub" style="margin:0">${esc(t('planAsServiceHelp'))}</p>`}</div>`;
 }
 
 export function eventForm(id, date) {
