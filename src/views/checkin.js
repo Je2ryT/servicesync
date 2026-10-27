@@ -4,6 +4,7 @@ import { SVC } from '../config.js';
 import { esc, fmt } from '../util.js';
 import { ic } from '../icons.js';
 import { searchMembers, isIn, attKey, attendanceSummary, defaultSvc, streak, STATUS, membersList } from '../members.js';
+import { cats, catOf, catName, isVisitor } from '../people.js';
 
 export const dbUpdateCard = file => `<div class="card empty">This needs a database update. Run <code>migrations/${file}</code> in Supabase, then reload.</div>`;
 export const ciService = () => ui.ciSvc || defaultSvc();
@@ -19,7 +20,7 @@ export function ciListHtml() {
     return `<div class="ci ${a ? 'in' : ''}">
       <button class="ci-main" data-act="ciToggle" data-id="${esc(m.id)}" aria-pressed="${!!a}">
         <span class="dot">${a ? ic('check') : ''}</span>
-        <span class="ci-name"><b>${esc(m.name)}</b><small>${m.status === 'newcomer' ? '<span class="pill warn">Newcomer</span> ' : m.status === 'visitor' ? '<span class="pill mute">VISITOR</span> ' : ''}${a ? `Checked in ${new Date(a.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : `${st.came} of last ${st.of} Sundays`}</small></span>
+        <span class="ci-name"><b>${esc(m.name)}</b><small>${isVisitor(m) ? `<span class="pill warn">${esc(ui.peopleMissing && m.status === 'visitor' ? 'Visitor' : ui.peopleMissing ? 'Newcomer' : catName('visitors'))}</span> ` : catOf(m) === 'new-believers' ? `<span class="pill info">${esc(catName('new-believers'))}</span> ` : ''}${a ? `Checked in ${new Date(a.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : `${st.came} of last ${st.of} Sundays`}</small></span>
       </button>
       ${me.admin ? `<button class="ib" data-act="editMember" data-id="${esc(m.id)}" aria-label="Edit ${esc(m.name)}">${ic('pencil')}</button>` : ''}
     </div>`;
@@ -43,16 +44,19 @@ export function vCheckin() {
 
 /** Add or edit a member (admins edit; anyone on the roster can add a newcomer at the door). */
 export function memberForm(id, prefill = '') {
-  const m = id ? S.members[id] : { name: prefill, phone: '', email: '', lang: ciService() === 'en' ? 'en' : 'fr', status: 'newcomer', household: '', notes: '' };
+  const split = (prefill || '').trim().split(/\s+/);
+  const m = id ? S.members[id] : { name: prefill, first: split[0] || '', last: split.slice(1).join(' '), phone: '', email: '', lang: ciService() === 'en' ? 'en' : 'fr', status: 'newcomer', categoryId: 'visitors', household: '', notes: '' };
+  const rich = !ui.peopleMissing;   // migration 006: first/last name and categories
   const opt = (o, v) => Object.entries(o).map(([k, l]) => `<option value="${k}" ${k === v ? 'selected' : ''}>${l}</option>`).join('');
   return `<h2>${id ? esc(m.name) : 'New person'}</h2>
-    <label class="f">Full name<input type="text" id="mName" value="${esc(m.name)}" placeholder="First and last name"></label>
+    ${rich ? `<div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f" style="flex:1">First name<input type="text" id="mFirst" value="${esc(m.first || '')}"></label><label class="f" style="flex:1">Last name<input type="text" id="mLast" value="${esc(m.last || '')}"></label></div>`
+      : `<label class="f">Full name<input type="text" id="mName" value="${esc(m.name)}" placeholder="First and last name"></label>`}
     <div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f" style="flex:1">Phone<input type="tel" id="mPhone" value="${esc(m.phone)}" placeholder="+1 704 555 0100"></label>
       <label class="f" style="flex:1">Language<select id="mLang">${opt({ fr: 'French', en: 'English', both: 'Both' }, m.lang)}</select></label></div>
     <label class="f">Email (optional)<input type="email" id="mEmail" value="${esc(m.email)}"></label>
-    <div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f" style="flex:1">Status<select id="mStatus">${opt(STATUS, m.status)}</select></label>
+    <div class="row" style="flex-wrap:nowrap;align-items:end">${rich ? `<label class="f" style="flex:1">Category<select id="mCat">${cats().map(c => `<option value="${esc(c.id)}" ${c.id === catOf(m) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : `<label class="f" style="flex:1">Status<select id="mStatus">${opt(STATUS, m.status)}</select></label>`}
       <label class="f" style="flex:1">Family / household<input type="text" id="mHouse" value="${esc(m.household)}" placeholder="e.g. Mukendi family"></label></div>
-    ${me.admin ? `<label class="f">Notes<textarea id="mNotes" rows="2">${esc(m.notes)}</textarea></label>` : ''}
+    ${me.admin && !rich ? `<label class="f">Notes<textarea id="mNotes" rows="2">${esc(m.notes)}</textarea></label>` : ''}
     ${id ? '' : `<div class="checks"><label><input type="checkbox" id="mIn" checked> Check in now (${esc(svcLabel(ciService()))})</label></div>`}
     <div class="row" style="justify-content:space-between"><div class="row"><button class="btn cta" data-act="saveMember" data-id="${esc(id || '')}">Save</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>
       ${id && me.admin ? `<button class="btn danger" data-act="delMember" data-id="${esc(id)}">Remove</button>` : ''}</div>`;

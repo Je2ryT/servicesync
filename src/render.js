@@ -13,9 +13,10 @@ import { vStage } from './views/timer.js';
 import { vCheckin } from './views/checkin.js';
 import { vEvents } from './views/events.js';
 import { vReports } from './views/reports.js';
+import { vFollowups } from './views/followups.js';
 import { vLanding, vSignin, vNotMember, vNeedsMigration } from './views/auth.js';
 
-export const VIEWS = { home: vHome, checkin: vCheckin, events: vEvents, calendar: vCalendar, live: vLive, reports: vReports, roster: vPeople, swaps: vSwaps, templates: vTemplates };
+export const VIEWS = { home: vHome, checkin: vCheckin, events: vEvents, calendar: vCalendar, live: vLive, reports: vReports, roster: vPeople, followups: vFollowups, swaps: vSwaps, templates: vTemplates };
 
 let pending = false;
 export function render() {
@@ -31,7 +32,7 @@ export function render() {
   }
   const mp = ui.ready ? myPerson() : null;
   main.className = 'wrap';
-  who.innerHTML = `<div class="row" style="flex-wrap:nowrap"><div>${esc(me.name || (mp ? pname(mp) : me.email))}<span>${me.admin ? 'Administrator' : mp ? 'Team member' : ''}</span></div><button class="ib" data-act="signOut" aria-label="Sign out" title="Sign out">${ic('out')}</button></div>`;
+  who.innerHTML = `<div class="row" style="flex-wrap:nowrap"><div class="lang-sw" role="group" aria-label="Language / Langue">${['en', 'fr'].map(l => `<button data-act="setLang" data-v="${l}" aria-pressed="${ui.lang === l}">${l.toUpperCase()}</button>`).join('')}</div><div>${esc(me.name || (mp ? pname(mp) : me.email))}<span>${me.admin ? 'Administrator' : mp ? 'Team member' : ''}</span></div><button class="ib" data-act="signOut" aria-label="Sign out" title="Sign out">${ic('out')}</button></div>`;
   if (!ui.ready) { tabs.hidden = true; main.innerHTML = '<div class="empty">Loading the church schedule…</div>'; return; }
   if (ui.needsMigration) { tabs.hidden = true; main.className = 'wrap center'; main.innerHTML = vNeedsMigration(); return; }
   if (!me.admin && !mp) { tabs.hidden = true; main.className = 'wrap center'; main.innerHTML = vNotMember(); return; }

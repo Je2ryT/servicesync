@@ -5,6 +5,7 @@ import { activePeople, warnings, awaiting, monthState, monthRows, svcKeys, cov, 
 import { profile, notifications, attendanceSummary, upcomingEvents } from '../members.js';
 import { heroBlock, fairCard, timeRange } from './shared.js';
 import { eventCard } from './events.js';
+import { myFollowupsCard } from './followups.js';
 
 /* ---------- profile ---------- */
 function profileCard() {
@@ -79,7 +80,7 @@ export function vHome() {
   return `<div class="dash-head"><div><p class="eyebrow" style="color:var(--accent)">${esc(greet[1])} · ${esc(T.now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h1>${esc(greet[0])}, ${esc(first)}</h1></div></div>
     <div class="dash">
       <div class="dash-main">${profileCard()}${heroBlock()}${myAssignments(p)}</div>
-      <div class="dash-side">${notifCard()}${checkinCard()}${eventsCard()}</div>
+      <div class="dash-side">${notifCard()}${myFollowupsCard()}${checkinCard()}${eventsCard()}</div>
     </div>
     ${me.admin ? adminBlock() : ''}`;
 }

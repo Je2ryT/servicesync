@@ -5,6 +5,7 @@ import { S, ui, setState } from './state.js';
 import { toast } from './ui.js';
 import { clock, timerRow, timerKey } from './timer.js';
 import { logRow } from './activity.js';
+import { messageRow } from './views/messages.js';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -22,7 +23,7 @@ export async function q(p) {
   return data ?? true;
 }
 
-const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events', 'service_reports'];
+const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events', 'service_reports', 'categories', 'families', 'saved_filters', 'member_stats', 'flows', 'flow_steps', 'flow_entries', 'admins'];
 
 export async function loadAll() {
   const since = new Date(); since.setDate(since.getDate() - 180);   // attendance: the last six months is plenty for the screens
@@ -48,13 +49,23 @@ export async function loadAll() {
   const timers = {}; ui.timerMissing = !!by.service_timers.error;   // migration 002 not run yet: everything else still works
   rows('service_timers').forEach(r => { timers[timerKey(r.sunday_id, r.svc)] = timerRow(r); });
   ui.membersMissing = !!(by.members.error || by.attendance.error || by.events.error);   // migration 003 not run yet
-  const members = {}; rows('members').forEach(r => { members[r.id] = { name: r.name, phone: r.phone || '', email: r.email || '', lang: r.lang, status: r.status, household: r.household || '', notes: r.notes || '', active: r.active !== false, createdAt: Date.parse(r.created_at) }; });
+  const members = {}; rows('members').forEach(r => { members[r.id] = memberRow(r); });
+  ui.peopleMissing = !!(by.categories.error || by.families.error);   // migration 006 not run yet
+  const cats = {}; rows('categories').forEach(r => { cats[r.id] = { name: r.name, nameFr: r.name_fr || '', sort: r.sort || 0, active: r.active !== false }; });
+  const families = {}; rows('families').forEach(r => { families[r.id] = { name: r.name, address: r.address || '' }; });
+  const filters = {}; rows('saved_filters').forEach(r => { filters[r.id] = { name: r.name, filters: r.filters || {}, owner: r.owner || '', shared: !!r.shared }; });
+  ui.flowsMissing = !!(by.flows.error || by.flow_entries.error);   // migration 008 not run yet
+  const flows = {}; rows('flows').forEach(r => { flows[r.id] = { name: r.name, nameFr: r.name_fr || '', active: r.active !== false }; });
+  const steps = {}; rows('flow_steps').forEach(r => { steps[r.id] = { flow: r.flow_id, sort: r.sort || 0, title: r.title, titleFr: r.title_fr || '', assignee: r.default_assignee || null, days: r.due_days }; });
+  const fentries = {}; rows('flow_entries').forEach(r => { fentries[r.id] = { flow: r.flow_id, member: r.member_id, step: r.step_id, assignee: r.assignee || null, due: r.due_date || null, status: r.status, notes: r.notes || '', created: Date.parse(r.created_at), stepStarted: Date.parse(r.step_started_at), completed: r.completed_at ? Date.parse(r.completed_at) : null }; });
+  const mstats = {}; rows('member_stats').forEach(r => { mstats[r.member_id] = { first: r.first_attended, last: r.last_attended, visits: r.visits, en: r.visits_en, fr: r.visits_fr }; });
   const att = {}; rows('attendance').forEach(r => { att[r.member_id + '|' + r.date + '|' + r.svc] = { member: r.member_id, date: r.date, svc: r.svc, at: Date.parse(r.at), by: r.by_coord }; });
   const events = {}; rows('events').forEach(r => { events[r.id] = { title: r.title, date: r.date, start: r.start_time || '', end: r.end_time || '', location: r.location || '', description: r.description || '' }; });
   ui.reportsMissing = !!by.service_reports.error;   // migration 004 not run yet
   const reports = {}; rows('service_reports').forEach(r => { reports[r.sunday_id + '|' + r.svc] = reportRow(r); });
+  const admins = {}; rows('admins').forEach(r => { admins[String(r.email).toLowerCase()] = { by: r.added_by || '', at: r.added_at ? Date.parse(r.added_at) : null }; });   // only administrators can read this list
   const asg = {}; rows('assignments').forEach(r => { asg[r.id] = { sunId: r.sunday_id, svc: r.svc, pos: r.position_id, person: r.person_id, status: r.status }; });
-  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events, reports });
+  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events, reports, cats, families, filters, mstats, flows, steps, fentries, admins });
   ui.needsMigration = false;
   if (ui.chkDraft && !ui.chkDraft.dirty) ui.chkDraft = null;
   ui.ready = true; onLoaded();
@@ -90,7 +101,7 @@ export async function timerAction(sunId, svc, op, arg = {}) {
 }
 
 /** A service_reports row as the app uses it. */
-export const reportRow = r => ({ notes: r.notes || {}, summary: r.summary || '', followups: r.followups || '', updatedAt: Date.parse(r.updated_at), by: r.updated_by });
+export const reportRow = r => ({ notes: r.notes || {}, summary: r.summary || '', followups: r.followups || '', layout: r.layout || {}, updatedAt: Date.parse(r.updated_at), by: r.updated_by });
 
 /** Save one part of a service report (a segment's note, the summary or follow-ups). */
 export async function saveReport(sunId, svc, key, item, text) {
@@ -111,5 +122,71 @@ export async function loadActivity(more = false) {
   if (error) { a.error = /does not exist|schema cache|PGRST205|42P01/i.test(error.code + ' ' + error.message) ? 'This needs a database update. Run migrations/005-activity-log.sql in Supabase, then reload.' : 'Could not load the activity log: ' + error.message; a.loaded = true; onLoaded(); return; }
   const rows = (data || []).map(logRow);
   a.rows = more ? [...a.rows, ...rows] : rows; a.loaded = true; a.done = rows.length < 300;
+  onLoaded();
+}
+
+/** A members row as the app uses it (fields from migration 006 are empty before it runs). */
+export const memberRow = r => ({
+  name: r.name || [r.first_name, r.last_name].filter(Boolean).join(' '), first: r.first_name || '', last: r.last_name || '',
+  phone: r.phone || '', email: r.email || '', lang: r.lang, status: r.status, household: r.household || '', notes: r.notes || '',
+  active: r.active !== false, createdAt: Date.parse(r.created_at),
+  gender: r.gender || '', birthday: r.birthday || '', address: r.address || '', familyId: r.family_id || null, familyRole: r.family_role || '',
+  categoryId: r.category_id || null, smsOptOut: !!r.sms_opt_out, emailOptOut: !!r.email_opt_out, coordinatorId: r.coordinator_id || null,
+});
+
+/** One person's notes, category history and full attendance, loaded when their profile opens. */
+export async function loadProfile(id) {
+  const [n, h, a] = await Promise.all([
+    sb.from('person_notes').select('*').eq('member_id', id).order('created_at', { ascending: false }),
+    sb.from('category_history').select('*').eq('member_id', id).order('changed_at', { ascending: true }),
+    sb.from('attendance').select('date,svc,at').eq('member_id', id).order('date', { ascending: false }),
+  ]);
+  if (ui.person !== id) return;
+  ui.prof = {
+    id, loaded: true,
+    notes: (n.data || []).map(r => ({ id: r.id, body: r.body, author: r.author || '', at: Date.parse(r.created_at) })).sort((a, b) => b.at - a.at),   // newest first
+    history: (h.data || []).map(r => ({ from: r.from_category, to: r.to_category, by: r.changed_by || '', at: Date.parse(r.changed_at), note: r.note || '' })).sort((a, b) => a.at - b.at),   // oldest first, as a story
+    att: (a.data || []).map(r => ({ date: r.date, svc: r.svc })).sort((a, b) => b.date.localeCompare(a.date)),
+  };
+  onLoaded();
+}
+
+/** Sent messages (admins: all; others: their own), newest first. */
+export async function loadMessages() {
+  const m = ui.msgs; if (!m || m.loading) return; m.loading = true; m.error = '';
+  const { data, error } = await sb.from('messages').select('*').order('created_at', { ascending: false }).limit(200);
+  m.loading = false; m.loaded = true;
+  if (error) m.error = /does not exist|schema cache|PGRST205|42P01/i.test(error.code + ' ' + error.message) ? 'This needs a database update. Run migrations/007-messaging.sql in Supabase, then reload.' : error.message;
+  else m.rows = (data || []).map(messageRow);
+  onLoaded();
+}
+export async function loadRecipients(id) {
+  const { data } = await sb.from('message_recipients').select('*').eq('message_id', id).order('name', { ascending: true });
+  if (ui.msgs?.open === id) { ui.msgs.recips = data || []; onLoaded(); }
+}
+/** POST /api/send with the signed-in user's token. Returns { ok, body } or { ok: false, error }. */
+export async function sendMessage(payload) {
+  const { data } = await sb.auth.getSession(); const token = data?.session?.access_token;
+  try {
+    const r = await fetch('/api/send', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token || ''}` }, body: JSON.stringify(payload) });
+    const body = await r.json().catch(() => ({}));
+    return r.ok ? { ok: true, body } : { ok: false, error: body.error || `Error ${r.status}` };
+  } catch (e) { return { ok: false, error: 'No connection. Check the internet and try again.' }; }
+}
+
+/* ---------- Reports (009) ---------- */
+const missingFn = e => /PGRST202|PGRST205|42883|42P01|does not exist|schema cache/i.test((e.code || '') + ' ' + (e.message || ''));
+/** Run one report's database function and keep the rows under its key in ui.rpt.cache. */
+export async function runReport(key, rpc, args) {
+  const c = (ui.rpt.cache[key] = { loading: true, rows: null, error: '', missing: false });
+  const { data, error } = await sb.rpc(rpc, args);
+  c.loading = false;
+  if (error) { c.missing = missingFn(error); c.error = error.message; } else c.rows = data || [];
+  onLoaded();
+}
+export async function loadSchedules() {
+  const s = ui.rpt.sched; if (s.loading) return; s.loading = true;
+  const { data, error } = await sb.from('report_schedules').select('*').order('created_at', { ascending: true });
+  s.loading = false; s.loaded = true; s.missing = !!error && missingFn(error); s.rows = data || [];
   onLoaded();
 }

@@ -10,7 +10,7 @@ export const AREAS = {
 const AREA_OF = {
   sundays: 'schedule', assignments: 'schedule', swaps: 'schedule', daysoff: 'schedule',
   coordinators: 'people', admins: 'people', teams: 'people', positions: 'people', person_positions: 'people',
-  members: 'members', attendance: 'members', events: 'events', service_reports: 'reports', templates: 'settings', config: 'settings',
+  members: 'members', attendance: 'members', families: 'members', person_notes: 'members', categories: 'settings', flows: 'settings', flow_steps: 'settings', flow_entries: 'members', events: 'events', service_reports: 'reports', templates: 'settings', config: 'settings',
 };
 const ICON = { schedule: 'cal', people: 'users', members: 'checkc', events: 'cal', reports: 'pencil', settings: 'layers' };
 
@@ -36,7 +36,9 @@ const STATUS_WORD = { confirmed: 'confirmed', declined: 'declined', awaiting: 'r
 /** Which fields changed, as readable labels. */
 const LABELS = {
   coordinators: { name: 'name', email: 'sign-in email', phone: 'phone', lang_en: 'English service', lang_fr: 'French service', active: 'active', max_per_month: 'monthly limit' },
-  members: { name: 'name', phone: 'phone', email: 'email', lang: 'language', status: 'status', household: 'household', notes: 'notes', active: 'active' },
+  members: { name: 'name', first_name: 'first name', last_name: 'last name', phone: 'phone', email: 'email', lang: 'language', status: 'status', household: 'household', notes: 'notes', active: 'active', gender: 'gender', birthday: 'birthday', address: 'address', family_id: 'family', family_role: 'family role', category_id: 'category', sms_opt_out: 'text opt-out', email_opt_out: 'email opt-out', coordinator_id: 'serving-team link' },
+  categories: { name: 'name', name_fr: 'French name', sort: 'order', active: 'visibility' },
+  families: { name: 'name', address: 'address' },
   positions: { name: 'name', min_needed: 'minimum', preferred: 'preferred number', active: 'scheduling', team_id: 'team', sort: 'order' },
   events: { title: 'title', date: 'date', start_time: 'start time', end_time: 'end time', location: 'location', description: 'details' },
   sundays: { services: 'services', special: 'type', title: 'title', date: 'date' },
@@ -98,6 +100,31 @@ export function describe(e) {
       return out(`edited ${member(n.id, n.name)}${fields ? ` (${fields})` : ''}`);
     case 'attendance':
       return out(`${e.op === 'delete' ? 'undid the check-in of' : 'checked in'} ${member(r.member_id)} · ${service(r.date, r.svc)}`);
+    case 'person_notes':
+      if (e.op === 'insert') return out(`wrote a note on ${member(r.member_id)}`);
+      if (e.op === 'delete') return out(`deleted a note on ${member(r.member_id)}`);
+      return out(`edited a note on ${member(r.member_id)}`);
+    case 'families':
+      if (e.op === 'insert') return out(`created the family ${q(r.name)}`);
+      if (e.op === 'delete') return out(`deleted the family ${q(o.name)}`);
+      return out(`edited the family ${q(n.name)}${fields ? ` (${fields})` : ''}`);
+    case 'categories':
+      if (e.op === 'insert') return out(`added the category ${q(r.name)}`);
+      if (e.op === 'delete') return out(`deleted the category ${q(o.name)}`);
+      if (o.active !== n.active) return out(`${n.active ? 'showed' : 'hid'} the category ${q(n.name)}`);
+      return out(`edited the category ${q(n.name)}${fields ? ` (${fields})` : ''}`);
+    case 'flow_entries': {
+      const who = member(r.member_id); const step = S.steps?.[n.step_id || o.step_id]?.title;
+      if (e.op === 'insert') return out(`added ${who} to the ${S.flows?.[r.flow_id]?.name || ''} follow-up`.replace('  ', ' '));
+      if (e.op === 'delete') return out(`removed ${who} from a follow-up`);
+      if (o.status !== n.status && n.status === 'done') return out(`finished ${who}'s follow-up`);
+      if (o.step_id !== n.step_id) return out(`moved ${who} to “${S.steps?.[n.step_id]?.title || 'the next step'}”`);
+      if (o.assignee !== n.assignee) return out(`gave ${who}'s follow-up to ${n.assignee ? person(n.assignee) : 'nobody'}`);
+      if (o.due_date !== n.due_date) return out(`moved ${who}'s follow-up to ${day(n.due_date)}`);
+      return out(`updated ${who}'s follow-up${step ? ` (${step})` : ''}`);
+    }
+    case 'flows': case 'flow_steps':
+      return out(`${e.op === 'insert' ? 'added' : e.op === 'delete' ? 'removed' : 'edited'} ${e.tbl === 'flows' ? 'the follow-up flow' : 'the follow-up step'} ${q(r.name || r.title)}`);
     case 'events':
       if (e.op === 'insert') return out(`added the event ${q(r.title)} on ${day(r.date)}`);
       if (e.op === 'delete') return out(`deleted the event ${q(o.title)} (${day(o.date)})`);
@@ -120,7 +147,7 @@ export function describe(e) {
   }
 }
 
-const NOUN = { members: ['member', 'members'], attendance: ['check-in', 'check-ins'], assignments: ['assignment', 'assignments'], person_positions: ['position link', 'position links'], daysoff: ['Sunday off', 'Sundays off'] };
+const NOUN = { members: ['member', 'members'], families: ['family', 'families'], categories: ['category', 'categories'], attendance: ['check-in', 'check-ins'], assignments: ['assignment', 'assignments'], person_positions: ['position link', 'position links'], daysoff: ['Sunday off', 'Sundays off'] };
 const VERB = { insert: 'added', update: 'changed', delete: 'removed' };
 
 /**

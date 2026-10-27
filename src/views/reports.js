@@ -5,10 +5,15 @@ import { ic } from '../icons.js';
 import { docs, docOf, visible, svcKeys, svcName, tplFor, startOf, asgOf, pname, posName, status, allPositions } from '../domain.js';
 import { timerOf, minutes } from '../timer.js';
 import { attendanceFor, mname } from '../members.js';
+import { isVisitor } from '../people.js';
 import { canRun } from './timer.js';
 import { timeRange } from './shared.js';
 import { vActivity, actState } from './activity.js';
-import { loadActivity } from '../data.js';
+import { loadActivity, loadMessages } from '../data.js';
+import { vMessages, msgState } from './messages.js';
+import { t } from '../i18n.js';
+import { vChurchReports } from './rpt.js';
+import { vLayout } from './layout.js';
 
 export const reportOf = (sunId, svc) => S.reports[sunId + '|' + svc] || { notes: {}, summary: '', followups: '' };
 
@@ -27,7 +32,7 @@ export function reportSegments(doc, svc) {
 /** Totals for the strip at the top and the list. */
 export function reportStats(doc, svc) {
   const att = attendanceFor(doc.date, svc); const t = timerOf(doc.id, svc); const rep = reportOf(doc.id, svc);
-  const newcomers = att.filter(a => S.members[a.member]?.status === 'newcomer').length;
+  const newcomers = att.filter(a => S.members[a.member] && isVisitor(S.members[a.member])).length;
   let ran = null;
   if (t?.endedAt && t.startedAt) { const total = t.items.reduce((a, o) => a + (+o.min || 0) * 60, 0); const actual = (t.endedAt - t.startedAt) / 1000; ran = { actual, diff: Math.round((actual - total) / 60) }; }
   const notes = Object.keys(rep.notes).length + (rep.summary ? 1 : 0) + (rep.followups ? 1 : 0);
@@ -52,7 +57,7 @@ function vReport(doc, svc) {
   const ranText = st.ran ? `${minutes(st.ran.actual)}<small>${st.ran.diff === 0 ? 'on time' : st.ran.diff > 0 ? st.ran.diff + ' min over' : -st.ran.diff + ' min under'}</small>` : `—<small>timer not used</small>`;
   return `<div class="head rep-head"><div><button class="btn link noprint" data-act="repBack">${ic('left')} All reports</button>
       <h1>${esc(svcName(doc, svc))}</h1><p class="sub">${esc(fmt(doc.date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }))} · ${esc(timeRange(doc, svc))}</p></div>
-      <div class="row noprint"><button class="btn" data-act="openLive" data-id="${esc(doc.id)}" data-svc="${svc}">${ic('live')} Live view</button><button class="btn" data-act="repPrint">${ic('share')} Print / PDF</button></div></div>
+       <div class="row noprint"><button class="btn" data-act="openLayout" data-id="${esc(doc.id)}" data-svc="${svc}">${ic('list')} ${esc(t('serviceLayout'))}</button><button class="btn" data-act="openLive" data-id="${esc(doc.id)}" data-svc="${svc}">${ic('live')} Live view</button><button class="btn" data-act="repPrint">${ic('share')} Print / PDF</button></div></div>
     ${can ? '' : '<p class="sub noprint">Reports can be written by people on the roster once the Sunday is published.</p>'}
     <div class="rep-stats"><div><span>Attendance</span><b>${st.people}</b><small>checked in</small></div><div><span>Newcomers</span><b>${st.newcomers}</b><small>first visits</small></div>
       <div><span>Length</span><b>${ranText}</b></div><div><span>Serving</span><b>${st.team}</b><small>on the team</small></div></div>
@@ -70,9 +75,15 @@ function vReport(doc, svc) {
 }
 
 /* ---------- list of reports ---------- */
-const subnav = () => (me.admin ? `<div><div class="seg"><button data-act="rsub" data-v="reports" aria-pressed="${ui.rsub !== 'activity'}">Service reports</button><button data-act="rsub" data-v="activity" aria-pressed="${ui.rsub === 'activity'}">Activity log</button></div></div>` : '');
+const subnav = () => `<div><div class="seg rsubnav"><button data-act="rsub" data-v="reports" aria-pressed="${!['activity', 'messages', 'church'].includes(ui.rsub)}">${esc(t('serviceReports'))}</button><button data-act="rsub" data-v="church" aria-pressed="${ui.rsub === 'church'}">${esc(t('churchReports'))}</button><button data-act="rsub" data-v="messages" aria-pressed="${ui.rsub === 'messages'}">${esc(t('sentMessages'))}</button>${me.admin ? `<button data-act="rsub" data-v="activity" aria-pressed="${ui.rsub === 'activity'}">${esc(t('activityLog'))}</button>` : ''}</div></div>`;
 
 export function vReports() {
+  if (ui.layout) { const [sun, svc] = ui.layout.split('|'); const doc = docOf(sun); if (doc && visible(doc)) return vLayout(doc, svc); ui.layout = null; }
+  if (ui.rsub === 'messages') {
+    const m = msgState(); if (!m.loaded && !m.loading) setTimeout(() => loadMessages(), 0);
+    return subnav() + vMessages();
+  }
+  if (ui.rsub === 'church') return subnav() + vChurchReports();
   if (me.admin && ui.rsub === 'activity') {
     const a = actState(); if (!a.loaded && !a.loading) setTimeout(() => loadActivity(), 0);
     return subnav() + vActivity();
@@ -89,5 +100,6 @@ function vServiceReports() {
   return `<div><h1>Reports</h1><p class="sub">A report for every service: notes on each part of the order of service, timing, attendance and follow-ups.</p></div>
     <div class="card rep-list">${list.map(d => `<div class="rep-day"><div class="rep-date"><b>${esc(fmt(d.date, { month: 'short', day: 'numeric' }))}</b><span>${esc(fmt(d.date, { weekday: 'long' }))}${d.date === T.todayIso ? ' · today' : d.date > T.todayIso ? ' · upcoming' : ''}</span></div>
       <div class="rep-svcs">${svcKeys(d).map(s => { const st = reportStats(d, s); return `<button class="rep-item" data-act="openReport" data-id="${esc(d.id)}" data-svc="${s}"><b>${esc(svcName(d, s))}</b>
-        <span>${st.notes ? `<span class="pill info">${st.notes} note${st.notes === 1 ? '' : 's'}</span>` : '<span class="pill mute">NO NOTES</span>'}${st.people ? `<span class="pill ok">${st.people} present</span>` : ''}${st.ran ? `<span class="pill ${st.ran.diff > 2 ? 'warn' : 'mute'}">${st.ran.diff > 0 ? '+' : ''}${st.ran.diff} MIN</span>` : ''}</span>${ic('right')}</button>`; }).join('')}</div></div>`).join('')}</div>`;
+        <span>${st.notes ? `<span class="pill info">${st.notes} note${st.notes === 1 ? '' : 's'}</span>` : '<span class="pill mute">NO NOTES</span>'}${st.people ? `<span class="pill ok">${st.people} present</span>` : ''}${st.ran ? `<span class="pill ${st.ran.diff > 2 ? 'warn' : 'mute'}">${st.ran.diff > 0 ? '+' : ''}${st.ran.diff} MIN</span>` : ''}</span>${ic('right')}</button>`; }).join('')}</div>
+      <div class="rep-lay">${svcKeys(d).map(s => `<button class="btn link sm" data-act="openLayout" data-id="${esc(d.id)}" data-svc="${s}">${ic('list')} ${esc(t('layoutBtn'))} · ${esc(svcName(d, s))}</button>`).join('')}</div></div>`).join('')}</div>`;
 }

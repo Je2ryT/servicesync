@@ -9,7 +9,7 @@ import { TABS } from './config.js';
    asg:    id → {sunId,svc,pos,person,status}
    timers: 'sunId|svc' → live timer (see timer.js)
    sun, tpl, cfg, chk, off, swap: as before */
-export const S = { people: {}, teams: {}, pos: {}, quals: {}, asg: {}, sun: {}, tpl: {}, cfg: {}, chk: {}, off: {}, swap: {}, timers: {}, members: {}, att: {}, events: {}, reports: {} };
+export const S = { people: {}, teams: {}, pos: {}, quals: {}, asg: {}, sun: {}, tpl: {}, cfg: {}, chk: {}, off: {}, swap: {}, timers: {}, members: {}, att: {}, events: {}, reports: {}, cats: {}, families: {}, mstats: {}, filters: {}, flows: {}, steps: {}, fentries: {}, admins: {} };
 export function setState(next) { for (const k of Object.keys(S)) S[k] = next[k] || {}; }
 
 export const me = { email: '', admin: false, name: '' };
@@ -20,9 +20,10 @@ export function setNow(d) { T.now = d; T.todayIso = iso(d); T.thisSun = iso(next
 setNow(new Date());
 
 export const ui = {
-  tab: 'home', month: ym(T.now), liveIdx: null, liveSvc: 'en', tsub: 'order', psub: 'people',
-  drafts: {}, chkDraft: null, stage: null, timerMissing: false, membersMissing: false, ciSvc: null, ciQuery: '', imp: null, rep: null, reportsMissing: false, repSave: {}, rsub: 'reports', act: null, evMonth: null, evDay: null, intro: false, authMsg: '', authSent: false, authView: 'landing', session: null, ready: false, needsMigration: false,
+  tab: 'home', month: ym(T.now), liveIdx: null, liveSvc: 'en', tsub: 'order', psub: 'all',
+  drafts: {}, chkDraft: null, stage: null, timerMissing: false, membersMissing: false, ciSvc: null, ciQuery: '', imp: null, rep: null, reportsMissing: false, repSave: {}, rsub: 'reports', layout: null, phDraft: null, rpt: { open: null, params: {}, cache: {}, sel: [], sched: { rows: [], loaded: false, loading: false, missing: false } }, act: null, lang: 'en', peopleMissing: false, flowsMissing: false, flow: 'newcomer', fmine: false, pf: {}, psel: [], person: null, prof: null, evMonth: null, evDay: null, intro: false, authMsg: '', authSent: false, authView: 'landing', session: null, ready: false, needsMigration: false,
 };
+try { const l = localStorage.getItem('ss-lang'); if (l === 'fr' || l === 'en') ui.lang = l; } catch (e) { /* storage unavailable */ }
 try { const t = localStorage.getItem('ss-tab'); if (t && TABS.some(x => x[0] === t)) ui.tab = t; } catch (e) { /* storage unavailable */ }
 if (typeof location !== 'undefined' && TABS.some(x => x[0] === location.hash.slice(1))) ui.tab = location.hash.slice(1);
 

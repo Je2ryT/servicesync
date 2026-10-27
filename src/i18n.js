@@ -1,0 +1,175 @@
+/* English / French for the newer screens (People, profiles, messages, follow-ups, reports).
+   The language is remembered per device; the EN | FR switch sits in the header. */
+import { ui } from './state.js';
+
+const D = {
+  en: {
+    // people list
+    admins: 'Administrators', adminsSub: 'Administrators plan the schedule, edit people and teams, send to anyone, and see every report. Everyone else on the serving team keeps their usual access.',
+    addAdmin: 'Add administrator', adminPick: 'Someone on the serving team', adminEmail: 'Email address', adminOr: 'or an email address', adminEmailPh: 'name@example.com', adminIsYou: 'You', adminNotRoster: 'Not on the serving team',
+    adminAddedBy: 'Added by {who}', adminAlready: '{email} is already an administrator.', adminAdded: '{email} is now an administrator.', adminRemoved: '{email} is no longer an administrator.',
+    adminRemoveTitle: 'Remove {name} as administrator?', adminRemoveBody: 'They keep their place on the serving team and can still sign in, with a team member’s access.', adminRemoveSelf: 'This is you. You will lose administrator access straight away.',
+    adminLast: 'This is the only administrator. Add someone else first.', adminRemove: 'Remove', adminPill: 'Administrator', adminsHelp: 'They sign in with this email. The change applies the next time they open or reload ServiceSync.',
+    serviceLayout: 'Service layout', layoutSub: 'The order of service with who leads each part, ready to print before the service.', layoutEditHint: 'Type a name to change it for this service only; leave it empty to use the schedule.',
+    layoutTitle: 'Order of service', colTime: 'Time', colPart: 'Part', colWho: 'Who', minShort: '{n} min', layoutNotes: 'Notes', layoutPrinted: 'Printed {d}', printLayout: 'Print',
+    layoutOpen: '{n} places still empty', layoutOpen1: '{n} place still empty', layoutFull: 'Everyone is in', namePh: 'Name', fromSchedule: 'From the schedule', layoutBtn: 'Layout',
+    noPlaceholders: 'No placeholders yet. Add them under each part on Templates → Order of service.', openTemplates: 'Open Templates',
+    placeholders: 'Placeholders', placeholdersFor: 'Placeholders for “{item}”', placeholdersSub: 'Who leads this part. Each one prints as a coloured tag with the person’s name next to it.',
+    addPlaceholder: 'Add placeholder', editPlaceholders: 'Placeholders', noPlaceholdersYet: 'None yet.', role: 'Role', tagColor: 'Tag colour', color_blue: 'Blue', color_white: 'White', color_yellow: 'Yellow',
+    customLabel: 'Label, e.g. Usher', fillFrom: 'Fill from position', fillAuto: 'Automatic', fillHelp: 'Names fill in from the schedule: from the position you pick, or a position with the same name (Pastor, Interpreter…). Anyone can type a different name on the day.', done: 'Done', layoutSaveFail: 'Not saved.', allServices: 'All services', svcEnName: 'English Service', svcFrName: 'French Service',
+    people: 'People', everyone: 'Everyone', servingTeam: 'Serving team', teamsPositions: 'Teams & positions',
+    peopleSub: '{n} people in the church directory', search: 'Search by name, phone or email',
+    category: 'Category', allCategories: 'All categories', language: 'Language', anyLanguage: 'Any language',
+    service: 'Service', anyService: 'Any service', english: 'English', french: 'French', special: 'Special', both: 'Both',
+    attendedEn: 'Comes to English', attendedFr: 'Comes to French',
+    lastAttended: 'Last attended', anyTime: 'Any time', within2w: 'In the last 2 weeks', within1m: 'In the last month', within3m: 'In the last 3 months',
+    notIn1m: 'Not in the last month', notIn3m: 'Not in the last 3 months', never: 'Never checked in',
+    phone: 'Phone', email: 'Email', hasPhone: 'Has a phone', noPhone: 'No phone', hasEmail: 'Has an email', noEmail: 'No email', any: 'Any',
+    clear: 'Clear filters', savedFilters: 'Saved filters', saveFilter: 'Save filter', filterName: 'Name this filter', shareFilter: 'Share with the serving team',
+    deleteFilter: 'Delete', mine: 'Mine', shared: 'Shared',
+    shown: '{n} shown', selected: '{n} selected', selectAll: 'Select all shown', clearSelection: 'Clear selection',
+    exportCsv: 'Export CSV', setCategory: 'Set category…', addPerson: 'Add person', categories: 'Categories',
+    noMatch: 'Nobody matches these filters.', noPeople: 'No people yet. Import them from Elvanto on Check-in, or add someone.',
+    lastSeen: 'Last here {d}', neverSeen: 'Not checked in yet', family: 'Family',
+    // profile
+    back: 'People', details: 'Details', edit: 'Edit', firstName: 'First name', lastName: 'Last name', gender: 'Gender', male: 'Male', female: 'Female',
+    birthday: 'Birthday', age: '{n} years old', address: 'Address', role: 'Role in family', adult: 'Adult', child: 'Child',
+    noFamily: 'Not in a family yet', newFamily: 'New family…', familyName: 'Family name', familyMembers: 'Family',
+    smsOptOut: 'No text messages', emailOptOut: 'No emails', optedOut: 'Opted out', contactPrefs: 'Contact',
+    categoryHistory: 'Category history', setBy: 'by {who}', fromTo: '{from} → {to}', joined: 'Added as {to}',
+    notes: 'Notes', addNote: 'Add a note', notePh: 'A call, a visit, a prayer request…', save: 'Save', cancel: 'Cancel', remove: 'Remove', del: 'Delete',
+    noNotes: 'No notes yet.', attendance: 'Attendance', visits: '{n} visits', visits1: '1 visit', firstVisit: 'First visit {d}', noAttendance: 'No check-ins yet.',
+    servesAs: 'Serves as', upcoming: 'Upcoming', notServing: 'Not on the serving team.', nothingScheduled: 'Nothing scheduled.',
+    loading: 'Loading…', unknown: '—', saved: 'Saved', tapAgain: 'Tap again to confirm', confirmed: 'Confirmed', declined: 'Declined', awaiting: 'Awaiting reply',
+    // categories editor
+    catEditor: 'Categories', catEditorSub: 'Rename, reorder or add categories. A category in use can be hidden, not deleted.',
+    nameEn: 'Name (English)', nameFr: 'Name (French)', hidden: 'Hidden', addCategory: 'Add category', inUse: '{n} people', inUse1: '1 person',
+    // import
+    familiesToCreate: '{n} new families',
+    // messaging
+    contact: 'Contact', contactN: 'Contact ({n})', contactShown: 'Contact all shown', contactTeam: 'Message this team', contactService: 'Message this service’s team',
+    composeTitle: 'New message', to: 'To', channelEmail: 'Email', channelSms: 'Text (SMS)', channelBoth: 'Both',
+    subject: 'Subject', message: 'Message', insertFirstName: 'Insert first name', mergeHint: '{first_name} becomes each person’s first name.',
+    smsCount: '{chars} characters · {seg} text segment(s)', smsCount1: '{chars} characters · 1 text segment', unicode: 'Uses special characters (emoji, curly quotes, ê, ç…): each segment holds 70 instead of 160.',
+    willGetSms: '{n} will get a text', willGetEmail: '{n} will get an email', skippedTitle: 'Won’t receive it',
+    whyOptSms: 'Opted out of texts', whyOptEmail: 'Opted out of emails', whyNoPhone: 'No mobile number', whyNoEmail: 'No email address',
+    notOnTeam: '{n} not on your team were left out (you can message your own team).', review: 'Review', backEdit: 'Back',
+    confirmTitle: 'Ready to send?', confirmLine: 'Send to {people} people: {sms} texts and {email} emails.', confirmSegments: 'About {n} text segments in total.', sendNow: 'Send now',
+    sending: 'Sending…', sentDone: 'Sent', sentSummary: '{sent} sent · {failed} failed · {skipped} skipped', viewSent: 'See sent messages', close: 'Close',
+    sendError: 'Not sent: {msg}', retry: 'Try again', retrySafe: 'Trying again is safe: nobody gets it twice.', nobodyToSend: 'Nobody here can receive this message.',
+    sentMessages: 'Sent messages', sentSub: 'Every email and text sent from ServiceSync, with what happened to each one.', noMessages: 'No messages sent yet.',
+    statusSending: 'Sending', statusSent: 'Sent', statusPartial: 'Partly sent', statusFailed: 'Failed', statusDelivered: 'Delivered', statusSkipped: 'Skipped', statusQueued: 'Waiting',
+    by: 'by {who}', recipients: 'Recipients', refresh: 'Refresh', allMessages: 'All messages', serviceReports: 'Service reports', activityLog: 'Activity log',
+    // follow-ups
+    followups: 'Follow-ups', followupsSub: 'Who to welcome, call and visit next. Newcomers are added automatically.', flow: 'Flow',
+    onlyMine: 'Only mine', addToFlow: 'Add someone', editFlow: 'Edit steps', newFlow: 'New flow', activeN: '{n} in progress', overdueN: '{n} overdue', doneN: '{n} finished',
+    due: 'Due {d}', dueToday: 'Due today', lateDays: '{n} days late', lateDays1: '1 day late', unassigned: 'Unassigned', assignTo: 'Assign to', dueDate: 'Due date',
+    markDone: 'Done', doneTitle: 'Mark “{step}” done', doneNote: 'What happened? (saved on their timeline)', doneNext: 'Next: {step}', doneLast: 'This was the last step.',
+    emptyStep: 'Nobody here.', noFlows: 'No follow-up flows yet.', noFlowsAsk: 'An administrator can set one up here.', myFollowups: 'My follow-ups', noMine: 'Nothing assigned to you. 🎉',
+    followup: 'Follow-up', inFlow: '{flow}: {step}', addFollowup: 'Add to a follow-up', finished: 'Finished', choosePerson: 'Choose a person', whichFlow: 'Which follow-up',
+    stepTitle: 'Step', titleEn: 'Title (English)', titleFr: 'Title (French)', defaultPerson: 'Default person', dueInDays: 'Due in (days)', addStep: 'Add step', flowName: 'Flow name',
+    importFlows: 'Add imported Visitors to the Newcomer follow-up', notesField: 'Notes', seeAll: 'See all',
+    dbUpdate: 'This needs a database update. Run {file} in Supabase, then reload.',
+    churchReports: 'Attendance & people', churchReportsSub: 'Reports on attendance, people, serving and messages. Every report downloads as CSV.', allReports: 'All reports',
+    range: 'Period', weeksAway: 'Away for (weeks)', minVisits: 'Came at least (times)', noNoteDays: 'No note for (days)', person: 'Person', choosePersonFirst: 'Choose a person to see their attendance.',
+    downloadCsv: 'Download CSV', emailWeekly: 'Email weekly', loading: 'Loading…', noRows: 'Nothing to show for this period.', showingOf: 'Showing {n} of {total}. The CSV has everything.',
+    totalVisits: 'Visits', avgSunday: 'Average per date', firstVisits: 'First visits', serviceDates: 'Service dates', byService: 'Attendance by service', byCategory: 'By category', byMonth: 'By month', month: 'Month', avg: 'Average', total: 'Total',
+    cameOf: 'Came {n} times in {total} Sundays', cameOf1: 'Came once in {total} Sundays', selectedN: '{n} selected', selectedN1: '{n} selected', addToFollowup: 'Add to follow-up', addedToFlowN: 'Added {n} people to the follow-up.', addedToFlowN1: 'Added {n} person to the follow-up.',
+    weeklyEmails: 'Weekly report emails', weeklyEmailsSub: 'Sent every week at 8 a.m. (Eastern) to the addresses you choose.', noSchedules: 'No weekly emails yet. Open a report and choose “Email weekly”.',
+    sendOn: 'Send on', sendTo: 'Send to (emails, one per line or separated by commas)', emailLang: 'Language of the email', badEmails: 'Check these addresses: {list}', pause: 'Pause', resume: 'Resume', paused: 'Paused', lastSentOn: 'Last sent {d}',
+    weekdays: 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday',
+  },
+  fr: {
+    admins: 'Administrateurs', adminsSub: 'Les administrateurs planifient le programme, modifient les personnes et les équipes, écrivent à tout le monde et voient tous les rapports. Les autres membres de l’équipe gardent leur accès habituel.',
+    addAdmin: 'Ajouter un administrateur', adminPick: 'Une personne de l’équipe de service', adminEmail: 'Adresse e-mail', adminOr: 'ou une adresse e-mail', adminEmailPh: 'nom@exemple.com', adminIsYou: 'Vous', adminNotRoster: 'Pas dans l’équipe de service',
+    adminAddedBy: 'Ajouté par {who}', adminAlready: '{email} est déjà administrateur.', adminAdded: '{email} est maintenant administrateur.', adminRemoved: '{email} n’est plus administrateur.',
+    adminRemoveTitle: 'Retirer {name} des administrateurs ?', adminRemoveBody: 'La personne reste dans l’équipe de service et peut toujours se connecter, avec l’accès d’un membre de l’équipe.', adminRemoveSelf: 'C’est vous. Vous perdrez l’accès administrateur immédiatement.',
+    adminLast: 'C’est le seul administrateur. Ajoutez d’abord quelqu’un d’autre.', adminRemove: 'Retirer', adminPill: 'Administrateur', adminsHelp: 'La personne se connecte avec cet e-mail. Le changement s’applique la prochaine fois qu’elle ouvre ou recharge ServiceSync.',
+    serviceLayout: 'Déroulement du culte', layoutSub: 'L’ordre du culte avec qui anime chaque moment, prêt à imprimer avant le culte.', layoutEditHint: 'Tapez un nom pour le changer pour ce culte seulement ; laissez vide pour reprendre le programme.',
+    layoutTitle: 'Ordre du culte', colTime: 'Heure', colPart: 'Moment', colWho: 'Qui', minShort: '{n} min', layoutNotes: 'Notes', layoutPrinted: 'Imprimé le {d}', printLayout: 'Imprimer',
+    layoutOpen: '{n} places encore vides', layoutOpen1: '{n} place encore vide', layoutFull: 'Tout le monde est prévu', namePh: 'Nom', fromSchedule: 'D’après le programme', layoutBtn: 'Déroulement',
+    noPlaceholders: 'Pas encore d’emplacements. Ajoutez-les sous chaque moment dans Modèles → Ordre du culte.', openTemplates: 'Ouvrir les modèles',
+    placeholders: 'Emplacements', placeholdersFor: 'Emplacements pour « {item} »', placeholdersSub: 'Qui anime ce moment. Chacun s’imprime comme une étiquette de couleur avec le nom de la personne.',
+    addPlaceholder: 'Ajouter un emplacement', editPlaceholders: 'Emplacements', noPlaceholdersYet: 'Aucun pour l’instant.', role: 'Rôle', tagColor: 'Couleur de l’étiquette', color_blue: 'Bleu', color_white: 'Blanc', color_yellow: 'Jaune',
+    customLabel: 'Libellé, p. ex. Huissier', fillFrom: 'Remplir depuis le poste', fillAuto: 'Automatique', fillHelp: 'Les noms viennent du programme : du poste choisi, ou d’un poste du même nom (Pasteur, Interprète…). Chacun peut taper un autre nom le jour même.', done: 'Terminé', layoutSaveFail: 'Non enregistré.', allServices: 'Tous les cultes', svcEnName: 'Culte en anglais', svcFrName: 'Culte en français',
+    people: 'Personnes', everyone: 'Tout le monde', servingTeam: 'Équipe de service', teamsPositions: 'Équipes et postes',
+    peopleSub: '{n} personnes dans l’annuaire de l’église', search: 'Rechercher par nom, téléphone ou courriel',
+    category: 'Catégorie', allCategories: 'Toutes les catégories', language: 'Langue', anyLanguage: 'Toutes les langues',
+    service: 'Culte', anyService: 'Tous les cultes', english: 'Anglais', french: 'Français', special: 'Spécial', both: 'Les deux',
+    attendedEn: 'Vient au culte anglais', attendedFr: 'Vient au culte français',
+    lastAttended: 'Dernière présence', anyTime: 'N’importe quand', within2w: 'Ces 2 dernières semaines', within1m: 'Ce dernier mois', within3m: 'Ces 3 derniers mois',
+    notIn1m: 'Pas depuis un mois', notIn3m: 'Pas depuis 3 mois', never: 'Jamais enregistré',
+    phone: 'Téléphone', email: 'Courriel', hasPhone: 'A un téléphone', noPhone: 'Sans téléphone', hasEmail: 'A un courriel', noEmail: 'Sans courriel', any: 'Tous',
+    clear: 'Effacer les filtres', savedFilters: 'Filtres enregistrés', saveFilter: 'Enregistrer le filtre', filterName: 'Nom du filtre', shareFilter: 'Partager avec l’équipe de service',
+    deleteFilter: 'Supprimer', mine: 'Les miens', shared: 'Partagés',
+    shown: '{n} affichés', selected: '{n} sélectionnés', selectAll: 'Tout sélectionner', clearSelection: 'Désélectionner',
+    exportCsv: 'Exporter en CSV', setCategory: 'Changer la catégorie…', addPerson: 'Ajouter une personne', categories: 'Catégories',
+    noMatch: 'Personne ne correspond à ces filtres.', noPeople: 'Personne pour l’instant. Importez-les depuis Elvanto dans l’onglet Check-in, ou ajoutez quelqu’un.',
+    lastSeen: 'Dernière présence {d}', neverSeen: 'Pas encore enregistré', family: 'Famille',
+    back: 'Personnes', details: 'Informations', edit: 'Modifier', firstName: 'Prénom', lastName: 'Nom', gender: 'Sexe', male: 'Homme', female: 'Femme',
+    birthday: 'Date de naissance', age: '{n} ans', address: 'Adresse', role: 'Rôle dans la famille', adult: 'Adulte', child: 'Enfant',
+    noFamily: 'Pas encore dans une famille', newFamily: 'Nouvelle famille…', familyName: 'Nom de la famille', familyMembers: 'Famille',
+    smsOptOut: 'Pas de SMS', emailOptOut: 'Pas de courriels', optedOut: 'Désabonné', contactPrefs: 'Contact',
+    categoryHistory: 'Historique des catégories', setBy: 'par {who}', fromTo: '{from} → {to}', joined: 'Ajouté comme {to}',
+    notes: 'Notes', addNote: 'Ajouter une note', notePh: 'Un appel, une visite, un sujet de prière…', save: 'Enregistrer', cancel: 'Annuler', remove: 'Retirer', del: 'Supprimer',
+    noNotes: 'Pas encore de notes.', attendance: 'Présence', visits: '{n} présences', visits1: '1 présence', firstVisit: 'Première visite le {d}', noAttendance: 'Aucune présence enregistrée.',
+    servesAs: 'Sert comme', upcoming: 'À venir', notServing: 'Ne fait pas partie de l’équipe de service.', nothingScheduled: 'Rien de prévu.',
+    loading: 'Chargement…', unknown: '—', saved: 'Enregistré', tapAgain: 'Touchez encore pour confirmer', confirmed: 'Confirmé', declined: 'Refusé', awaiting: 'En attente',
+    catEditor: 'Catégories', catEditorSub: 'Renommez, réordonnez ou ajoutez des catégories. Une catégorie utilisée peut être masquée, pas supprimée.',
+    nameEn: 'Nom (anglais)', nameFr: 'Nom (français)', hidden: 'Masquée', addCategory: 'Ajouter une catégorie', inUse: '{n} personnes', inUse1: '1 personne',
+    familiesToCreate: '{n} nouvelles familles',
+    contact: 'Contacter', contactN: 'Contacter ({n})', contactShown: 'Contacter tous les affichés', contactTeam: 'Écrire à cette équipe', contactService: 'Écrire à l’équipe de ce culte',
+    composeTitle: 'Nouveau message', to: 'À', channelEmail: 'Courriel', channelSms: 'SMS', channelBoth: 'Les deux',
+    subject: 'Objet', message: 'Message', insertFirstName: 'Insérer le prénom', mergeHint: '{first_name} est remplacé par le prénom de chaque personne.',
+    smsCount: '{chars} caractères · {seg} segments SMS', smsCount1: '{chars} caractères · 1 segment SMS', unicode: 'Caractères spéciaux (emoji, guillemets, ê, ç…) : chaque segment contient 70 caractères au lieu de 160.',
+    willGetSms: '{n} recevront un SMS', willGetEmail: '{n} recevront un courriel', skippedTitle: 'Ne le recevront pas',
+    whyOptSms: 'Désabonnés des SMS', whyOptEmail: 'Désabonnés des courriels', whyNoPhone: 'Pas de numéro de portable', whyNoEmail: 'Pas d’adresse courriel',
+    notOnTeam: '{n} personnes hors de votre équipe ont été retirées (vous pouvez écrire à votre équipe).', review: 'Vérifier', backEdit: 'Retour',
+    confirmTitle: 'Prêt à envoyer ?', confirmLine: 'Envoyer à {people} personnes : {sms} SMS et {email} courriels.', confirmSegments: 'Environ {n} segments SMS au total.', sendNow: 'Envoyer',
+    sending: 'Envoi…', sentDone: 'Envoyé', sentSummary: '{sent} envoyés · {failed} échoués · {skipped} ignorés', viewSent: 'Voir les messages envoyés', close: 'Fermer',
+    sendError: 'Non envoyé : {msg}', retry: 'Réessayer', retrySafe: 'Vous pouvez réessayer sans risque : personne ne le recevra deux fois.', nobodyToSend: 'Personne ici ne peut recevoir ce message.',
+    sentMessages: 'Messages envoyés', sentSub: 'Chaque courriel et SMS envoyé depuis ServiceSync, et ce qu’il est devenu.', noMessages: 'Aucun message envoyé pour l’instant.',
+    statusSending: 'En cours', statusSent: 'Envoyé', statusPartial: 'Envoi partiel', statusFailed: 'Échec', statusDelivered: 'Remis', statusSkipped: 'Ignoré', statusQueued: 'En attente',
+    by: 'par {who}', recipients: 'Destinataires', refresh: 'Actualiser', allMessages: 'Tous les messages', serviceReports: 'Rapports de culte', activityLog: 'Journal d’activité',
+    followups: 'Suivis', followupsSub: 'Qui accueillir, appeler et visiter. Les nouveaux venus sont ajoutés automatiquement.', flow: 'Parcours',
+    onlyMine: 'Seulement les miens', addToFlow: 'Ajouter quelqu’un', editFlow: 'Modifier les étapes', newFlow: 'Nouveau parcours', activeN: '{n} en cours', overdueN: '{n} en retard', doneN: '{n} terminés',
+    due: 'Pour le {d}', dueToday: 'Pour aujourd’hui', lateDays: '{n} jours de retard', lateDays1: '1 jour de retard', unassigned: 'Non attribué', assignTo: 'Attribuer à', dueDate: 'Échéance',
+    markDone: 'Fait', doneTitle: 'Marquer « {step} » comme fait', doneNote: 'Que s’est-il passé ? (enregistré dans son historique)', doneNext: 'Ensuite : {step}', doneLast: 'C’était la dernière étape.',
+    emptyStep: 'Personne ici.', noFlows: 'Aucun parcours de suivi pour l’instant.', noFlowsAsk: 'Un administrateur peut en créer un ici.', myFollowups: 'Mes suivis', noMine: 'Rien ne vous est attribué. 🎉',
+    followup: 'Suivi', inFlow: '{flow} : {step}', addFollowup: 'Ajouter à un suivi', finished: 'Terminé', choosePerson: 'Choisir une personne', whichFlow: 'Quel suivi',
+    stepTitle: 'Étape', titleEn: 'Titre (anglais)', titleFr: 'Titre (français)', defaultPerson: 'Personne par défaut', dueInDays: 'Échéance (jours)', addStep: 'Ajouter une étape', flowName: 'Nom du parcours',
+    importFlows: 'Ajouter les visiteurs importés au suivi des nouveaux venus', notesField: 'Notes', seeAll: 'Tout voir',
+    dbUpdate: 'Une mise à jour de la base de données est nécessaire. Exécutez {file} dans Supabase, puis rechargez.',
+    churchReports: 'Présences et personnes', churchReportsSub: 'Rapports sur les présences, les personnes, le service et les messages. Chaque rapport se télécharge en CSV.', allReports: 'Tous les rapports',
+    range: 'Période', weeksAway: 'Absent depuis (semaines)', minVisits: 'Venu au moins (fois)', noNoteDays: 'Sans note depuis (jours)', person: 'Personne', choosePersonFirst: 'Choisissez une personne pour voir ses présences.',
+    downloadCsv: 'Télécharger le CSV', emailWeekly: 'Envoyer chaque semaine', loading: 'Chargement…', noRows: 'Rien à afficher pour cette période.', showingOf: '{n} sur {total} affichés. Le CSV contient tout.',
+    totalVisits: 'Présences', avgSunday: 'Moyenne par date', firstVisits: 'Premières visites', serviceDates: 'Dates de culte', byService: 'Présences par culte', byCategory: 'Par catégorie', byMonth: 'Par mois', month: 'Mois', avg: 'Moyenne', total: 'Total',
+    cameOf: 'Présent {n} fois sur {total} dimanches', cameOf1: 'Présent 1 fois sur {total} dimanches', selectedN: '{n} sélectionnés', selectedN1: '{n} sélectionné', addToFollowup: 'Ajouter au suivi', addedToFlowN: '{n} personnes ajoutées au suivi.', addedToFlowN1: '{n} personne ajoutée au suivi.',
+    weeklyEmails: 'Rapports envoyés chaque semaine', weeklyEmailsSub: 'Envoyés chaque semaine à 8 h (heure de l’Est) aux adresses choisies.', noSchedules: 'Aucun envoi programmé. Ouvrez un rapport et choisissez « Envoyer chaque semaine ».',
+    sendOn: 'Envoyer le', sendTo: 'Envoyer à (e-mails, un par ligne ou séparés par des virgules)', emailLang: 'Langue de l’e-mail', badEmails: 'Vérifiez ces adresses : {list}', pause: 'Suspendre', resume: 'Reprendre', paused: 'Suspendu', lastSentOn: 'Dernier envoi le {d}',
+    weekdays: 'dimanche,lundi,mardi,mercredi,jeudi,vendredi,samedi',
+  },
+};
+
+export const LANGS = ['en', 'fr'];
+export const lang = () => (ui.lang === 'fr' ? 'fr' : 'en');
+export const locale = () => (lang() === 'fr' ? 'fr-FR' : 'en-US');
+
+/** Translate a key, filling {placeholders}. Falls back to English, then the key itself. */
+export function t(key, vars = {}) { return tIn(lang(), key, vars); }
+/** The same, in a given language (a French service prints in French whatever the screen language). */
+export function tIn(l, key, vars = {}) {
+  l = l === 'fr' ? 'fr' : 'en';
+  if (vars.n === 1 && (D[l][key + '1'] ?? D.en[key + '1'])) key += '1';   // singular forms: "1 person"
+  const s = D[l][key] ?? D.en[key] ?? key;
+  return s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
+}
+export const hasKey = key => key in D.en;
+export const keys = l => Object.keys(D[l]);
+
+/** A date in the current language: "Nov 1, 2026" / "1 nov. 2026". */
+export const dateText = (isoDate, opts = { month: 'short', day: 'numeric', year: 'numeric' }) => {
+  if (!isoDate) return '';
+  const [y, m, d] = String(isoDate).slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(locale(), opts);
+};

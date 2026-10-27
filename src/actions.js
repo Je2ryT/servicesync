@@ -3,7 +3,7 @@ import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
 import { ic } from './icons.js';
-import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity } from './data.js';
+import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity, loadProfile, loadMessages, loadRecipients, sendMessage, loadSchedules } from './data.js';
 import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
@@ -17,8 +17,22 @@ import { eventForm } from './views/events.js';
 import { attKey } from './members.js';
 import { importView, importPlan } from './views/import.js';
 import { activityListHtml } from './views/activity.js';
-import { parseCsv, detectColumns } from './importer.js';
+import { peopleRowsHtml, bulkBarHtml, personForm, categoryForm, saveFilterForm, manageFiltersForm } from './views/directory.js';
+import { filterPeople, toCsv, cats, catOf } from './people.js';
+import { t } from './i18n.js';
+import { composeView, counterHtml } from './views/compose.js';
+import { sourceIds, audience, newKey } from './compose.js';
+import { msgState } from './views/messages.js';
+import { doneForm, addForm, flowForm } from './views/followups.js';
+import { stepsOf } from './flows.js';
+import { parseCsv, detectColumns, memberRows, newFamilies } from './importer.js';
+import { fold } from './members.js';
 import { timeRange } from './views/shared.js';
+import { reportDef, reportCsv, csvName } from './reportdefs.js';
+import { removeForm } from './views/admins.js';
+import { placeholderForm } from './views/layout.js';
+import { tagsOf, ROLES } from './layout.js';
+import { keyOf, ctx as rptCtx, flowPickForm, scheduleForm, parseEmails } from './views/rpt.js';
 
 /* ---------- helpers ---------- */
 function shareText() {
@@ -36,6 +50,14 @@ function shareText() {
   lines.push('', location.origin); return lines.join('\n');
 }
 function draftOf(tid) { if (!ui.drafts[tid]) ui.drafts[tid] = structuredClone(templates()[tid]); return ui.drafts[tid]; }
+/** Copy the placeholder editor's fields back into ui.phDraft (before re-drawing it). */
+function readPh() {
+  const p = ui.phDraft; if (!p) return;
+  p.list.forEach((x, i) => {
+    const f = k => document.querySelector(`.modal [data-f="${k}"][data-i="${i}"]${k === 'color' ? ':checked' : ''}`);
+    x.prevRole = x.role; x.role = f('role')?.value || x.role; x.label = (f('label')?.value ?? x.label).trim().slice(0, 40); x.color = f('color')?.value || x.color; x.pos = f('pos')?.value ?? x.pos;
+  });
+}
 async function seedTemplates(except) {
   if (Object.keys(S.tpl).length) return;
   const rows = Object.entries(templates()).filter(([id]) => id !== except).map(([id, t]) => ({ id, name: t.name, lang: t.lang, items: t.order }));
@@ -68,6 +90,24 @@ function refreshCheckin() {
   const l = document.getElementById('ciList');
   if (l && document.activeElement?.id === 'ciQ') l.innerHTML = ciListHtml(); else render();
 }
+
+/* ---------- people ---------- */
+function refreshPeople() {
+  const l = document.getElementById('pList'), b = document.getElementById('pBulk');
+  if (l) l.innerHTML = peopleRowsHtml(); if (b) b.innerHTML = bulkBarHtml();
+}
+function download(name, text, type = 'text/csv;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([text], { type })); const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function syncCatDraft() {
+  document.querySelectorAll('.cat-ed [data-ci]').forEach(el => { const c = ui.catDraft[+el.dataset.ci]; if (!c) return; if (el.dataset.f === 'hidden') c.hidden = el.checked; else c[el.dataset.f] = el.value; });
+}
+function syncFlowDraft() {
+  const d = ui.flowDraft; if (!d) return; d.name = val('flName') || d.name; d.nameFr = document.getElementById('flNameFr')?.value ?? d.nameFr;
+  document.querySelectorAll('.fl-steps [data-si]').forEach(el => { const s = d.steps[+el.dataset.si]; if (s) s[el.dataset.f] = el.dataset.f === 'days' ? Math.max(0, Math.min(365, +el.value || 0)) : el.value; });
+}
+const chunks = (a, n = 200) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 /* ---------- live timer ---------- */
 const lastTap = { k: '', t: 0 };
@@ -180,7 +220,7 @@ export const H = {
   async cancelSwap(el) { if (await q(sb.from('swaps').delete().eq('id', el.dataset.id))) reload(); },
 
   /* people */
-  psub(el) { ui.psub = el.dataset.v; render(); },
+  psub(el) { ui.psub = el.dataset.v; ui.person = null; ui.prof = null; render(); },
   editPerson(el) {
     const id = el.dataset.id; const adm = me.admin;
     const t = id ? S.people[id] : { name: '', email: '', phone: '', langs: { en: true, fr: true }, active: true, max: 4 };
@@ -232,9 +272,14 @@ export const H = {
   addMember(el) { modal(memberForm(null, el.dataset.name || '')); },
   editMember(el) { modal(memberForm(el.dataset.id)); },
   async saveMember(el) {
-    const name = val('mName').trim().replace(/\s+/g, ' '); if (!name) { toast('Enter a name.'); return; }
+    const rich = !!document.getElementById('mFirst');   // migration 006: first/last name and a category
+    const first = val('mFirst').trim().replace(/\s+/g, ' '), last = val('mLast').trim().replace(/\s+/g, ' ');
+    const name = rich ? [first, last].filter(Boolean).join(' ') : val('mName').trim().replace(/\s+/g, ' ');
+    if (!name) { toast('Enter a name.'); return; }
     const id = el.dataset.id; const checkIn = !id && !!document.getElementById('mIn')?.checked;
-    const row = { name, phone: val('mPhone').trim() || null, email: val('mEmail').trim().toLowerCase() || null, lang: val('mLang') || 'fr', status: val('mStatus') || 'newcomer', household: val('mHouse').trim() || null };
+    const row = { name, phone: val('mPhone').trim() || null, email: val('mEmail').trim().toLowerCase() || null, lang: val('mLang') || 'fr', household: val('mHouse').trim() || null };
+    if (rich) Object.assign(row, { first_name: first || null, last_name: last || null, category_id: val('mCat') || 'visitors' });
+    else row.status = val('mStatus') || 'newcomer';
     if (me.admin && document.getElementById('mNotes')) row.notes = val('mNotes').trim() || null;
     closeModal();
     let saved;
@@ -242,6 +287,7 @@ export const H = {
     else saved = await q(sb.from('members').insert({ ...row, created_by: myPerson() }).select('id').single());
     if (!saved) return;
     if (checkIn) await q(sb.from('attendance').upsert({ member_id: saved.id, date: T.todayIso, svc: ciService(), by_coord: myPerson() }, { onConflict: 'member_id,date,svc', ignoreDuplicates: true }));
+    if (!id && !ui.flowsMissing) await sb.rpc('flow_enroll', { p_member: saved.id, p_flow: 'newcomer' });   // new at the door → newcomer follow-up
     ui.ciQuery = ''; reload(); toast(id ? `Saved ${name}.` : `Welcome, ${name}!${checkIn ? ' Checked in.' : ''}`);
   },
   async delMember(el) { if (!tapTwice(el, 'Tap again: attendance goes too')) return; closeModal(); if (await q(sb.from('members').delete().eq('id', el.dataset.id))) reload(); },
@@ -256,19 +302,31 @@ export const H = {
     const rows = parseCsv(await f.text());
     if (rows.length < 2) { ui.imp = { error: 'No people found in that file. Check it is the CSV from People → Export.' }; modal(importView()); return; }
     const headers = rows[0];
-    ui.imp = { fileName: f.name, headers, rows: rows.slice(1), map: detectColumns(headers), lang: 'fr', status: 'member' };
+    ui.imp = { fileName: f.name, headers, rows: rows.slice(1), map: detectColumns(headers), lang: 'fr', status: 'member', cat: 'congregation', flows: false };
     modal(importView());
   },
   impMap(el) { if (el.value === '') delete ui.imp.map[el.dataset.k]; else ui.imp.map[el.dataset.k] = +el.value; modal(importView()); },
-  impOpt(el) { ui.imp[el.dataset.k] = el.value; modal(importView()); },
+  impOpt(el) { ui.imp[el.dataset.k] = el.type === 'checkbox' ? el.checked : el.value; modal(importView()); },
   async impRun(el) {
     const { add } = importPlan(); if (!add.length) return;
-    el.disabled = true; const by = myPerson(); let done = 0;
-    for (let i = 0; i < add.length; i += 200) {
-      el.textContent = `Importing… ${done} of ${add.length}`;
-      const ok = await q(sb.from('members').insert(add.slice(i, i + 200).map(m => ({ ...m, created_by: by }))));
+    el.disabled = true; const by = myPerson(); let done = 0; const rich = !ui.peopleMissing;
+    let rows = memberRows(add, rich);
+    if (rich) {   // families first, so people can be linked to them
+      const have = new Map(Object.entries(S.families).map(([id, f]) => [fold(f.name), id]));
+      const names = newFamilies(add, Object.values(S.families));
+      if (names.length) {
+        el.textContent = `Creating ${names.length} families…`;
+        const made = await q(sb.from('families').insert(names.map(name => ({ name }))).select('id,name'));
+        if (!made) { el.disabled = false; el.textContent = 'Try again'; return; }
+        (Array.isArray(made) ? made : []).forEach(f => have.set(fold(f.name), f.id));
+      }
+      rows = rows.map(r => ({ ...r, family_id: r.household ? have.get(fold(r.household)) || null : null }));
+    }
+    for (let i = 0; i < rows.length; i += 200) {
+      el.textContent = `Importing… ${done} of ${rows.length}`;
+      const ok = await q(sb.from('members').insert(rows.slice(i, i + 200).map(m => ({ ...m, created_by: rich && !ui.imp.flows ? 'import' : by }))));
       if (!ok) { el.disabled = false; el.textContent = 'Try again'; toast(done ? `Imported ${done} before an error. Try again to add the rest.` : 'Nothing was imported.'); reload(); return; }
-      done += Math.min(200, add.length - i);
+      done += Math.min(200, rows.length - i);
     }
     ui.imp = null; closeModal(); reload(); toast(`Imported ${done} ${done === 1 ? 'person' : 'people'} from Elvanto.`);
   },
@@ -293,6 +351,240 @@ export const H = {
   actText(el) { ui.act.text = el.value; const l = document.getElementById('actList'); if (l) l.innerHTML = activityListHtml(); },
   actArea(el) { ui.act.area = el.value; render(); },
   actActor(el) { ui.act.actor = el.value; render(); },
+
+  /* language */
+  setLang(el) { ui.lang = el.dataset.v === 'fr' ? 'fr' : 'en'; try { localStorage.setItem('ss-lang', ui.lang); } catch (e) { /* ignore */ } render(); },
+
+  /* people directory */
+  pf(el) { ui.pf = { ...ui.pf, [el.dataset.k]: el.value }; render(); },
+  pfQ(el) { ui.pf = { ...ui.pf, q: el.value }; refreshPeople(); },
+  pfClear() { ui.pf = {}; ui.psel = []; render(); },
+  pfLoad(el) { const f = S.filters[el.value]; if (!f) return; ui.pf = { ...f.filters }; ui.psel = []; render(); },
+  pfSave() { modal(saveFilterForm()); },
+  async pfSaveGo() {
+    const name = val('sfName').trim(); if (!name) { toast(t('filterName')); return; }
+    const shared = !!document.getElementById('sfShared')?.checked; closeModal();
+    if (await q(sb.from('saved_filters').insert({ name, filters: { ...ui.pf }, shared }))) { reload(); toast(t('saved')); }
+  },
+  pfManage() { modal(manageFiltersForm()); },
+  async pfDel(el) { if (!tapTwice(el, t('tapAgain'))) return; if (await q(sb.from('saved_filters').delete().eq('id', el.dataset.id))) { delete S.filters[el.dataset.id]; modal(manageFiltersForm()); reload(); } },
+  pSel(el) {
+    const set = new Set(ui.psel); if (el.checked) set.add(el.value); else set.delete(el.value); ui.psel = [...set];
+    el.closest('.pr')?.classList.toggle('sel', el.checked); const b = document.getElementById('pBulk'); if (b) b.innerHTML = bulkBarHtml();
+  },
+  pSelAll() { ui.psel = filterPeople({ ...ui.pf }).map(m => m.id); refreshPeople(); },
+  pSelNone() { ui.psel = []; refreshPeople(); },
+  async pBulkCat(el) {
+    if (!me.admin || !el.value || !ui.psel.length) return;
+    const cat = el.value; const ids = [...ui.psel]; el.disabled = true;
+    for (const part of chunks(ids)) if (!await q(sb.from('members').update({ category_id: cat }).in('id', part))) { el.disabled = false; return; }
+    ui.psel = []; reload(); toast(`${ids.length} → ${cats().find(c => c.id === cat)?.name || cat}`);
+  },
+  pExport() {
+    const sel = new Set(ui.psel); const list = filterPeople({ ...ui.pf }).filter(m => !sel.size || sel.has(m.id));
+    download(`servicesync-people-${T.todayIso}.csv`, toCsv(list));
+  },
+  openPerson(el) { ui.person = el.dataset.id; ui.prof = null; ui.tab = 'roster'; ui.psub = 'all'; render(); window.scrollTo(0, 0); loadProfile(ui.person); },
+  personBack() { ui.person = null; ui.prof = null; render(); },
+  personEdit(el) { if (!me.admin) return; modal(personForm(el.dataset.id || null)); },
+  pFamPick(el) { const w = document.getElementById('pFamNewWrap'); if (w) { w.hidden = el.value !== '__new'; if (!w.hidden) document.getElementById('pFamNew')?.focus(); } },
+  async personSave(el) {
+    const first = val('pFirst').trim().replace(/\s+/g, ' '), last = val('pLast').trim().replace(/\s+/g, ' ');
+    if (!first && !last) { toast(t('firstName')); return; }
+    const id = el.dataset.id; let familyId = val('pFam') || null;
+    const row = {
+      first_name: first || null, last_name: last || null, name: [first, last].filter(Boolean).join(' '),
+      phone: val('pPhone').trim() || null, email: val('pEmail').trim().toLowerCase() || null,
+      gender: val('pGender') || null, birthday: val('pBirthday') || null, address: val('pAddress').trim() || null, lang: val('pLang') || 'fr',
+      category_id: val('pCat') || 'congregation', family_role: val('pRole') || null,
+      sms_opt_out: !!document.getElementById('pSmsOut')?.checked, email_opt_out: !!document.getElementById('pEmailOut')?.checked,
+    };
+    const famNew = val('pFamNew').trim();
+    closeModal();
+    if (familyId === '__new') {
+      const f = await q(sb.from('families').insert({ name: famNew || (last ? last + (ui.lang === 'fr' ? '' : ' family') : row.name), address: row.address }).select('id').single());
+      if (!f) return; familyId = f.id;
+    }
+    row.family_id = familyId;
+    const saved = id ? await q(sb.from('members').update(row).eq('id', id).select('id').single()) : await q(sb.from('members').insert({ ...row, created_by: myPerson() }).select('id').single());
+    if (!saved) return;
+    reload(); toast(t('saved'));
+    if (!id && saved.id) { ui.person = saved.id; ui.prof = null; ui.psub = 'all'; loadProfile(saved.id); }
+    else if (ui.person) loadProfile(ui.person);
+  },
+  async personDel(el) { if (!tapTwice(el, t('tapAgain'))) return; closeModal(); if (await q(sb.from('members').delete().eq('id', el.dataset.id))) { ui.person = null; ui.prof = null; reload(); } },
+  async noteAdd(el) {
+    const box = document.getElementById('noteNew'); const body = (box?.value || '').trim(); if (!body) { box?.focus(); return; }
+    el.disabled = true;
+    if (await q(sb.from('person_notes').insert({ member_id: el.dataset.id, body }))) { if (box) box.value = ''; await loadProfile(el.dataset.id); }
+    el.disabled = false;
+  },
+  async noteDel(el) { if (!tapTwice(el, t('tapAgain'))) return; if (await q(sb.from('person_notes').delete().eq('id', el.dataset.id))) loadProfile(ui.person); },
+
+  /* categories (admins) */
+  catEdit() { if (!me.admin) return; ui.catDraft = cats(true).map(c => ({ id: c.id, name: c.name, nameFr: c.nameFr || '', hidden: c.active === false })); modal(categoryForm()); },
+  catMove(el) { syncCatDraft(); const i = +el.dataset.i; if (i > 0) { const d = ui.catDraft; [d[i - 1], d[i]] = [d[i], d[i - 1]]; } modal(categoryForm()); },
+  catAdd() { syncCatDraft(); const n = val('catNew').trim(); if (!n) return; ui.catDraft.push({ id: null, name: n, nameFr: '', hidden: false }); modal(categoryForm()); },
+  async catSave() {
+    syncCatDraft(); const d = ui.catDraft.filter(c => c.name.trim());
+    const old = d.map((c, i) => ({ c, i })).filter(x => x.c.id).map(({ c, i }) => ({ id: c.id, name: c.name.trim(), name_fr: c.nameFr.trim() || null, sort: i, active: !c.hidden }));
+    const add = d.map((c, i) => ({ c, i })).filter(x => !x.c.id).map(({ c, i }) => ({ name: c.name.trim(), name_fr: c.nameFr.trim() || null, sort: i, active: !c.hidden }));
+    closeModal();
+    if (old.length && !await q(sb.from('categories').upsert(old))) return;
+    if (add.length && !await q(sb.from('categories').insert(add))) return;
+    ui.catDraft = null; reload(); toast(t('saved'));
+  },
+
+  /* service layout */
+  openLayout(el) { ui.layout = el.dataset.id + '|' + el.dataset.svc; ui.tab = 'reports'; ui.rsub = 'reports'; render(); window.scrollTo(0, 0); },
+  layBack() { ui.layout = null; render(); window.scrollTo(0, 0); },
+  layPrint() { window.print(); },
+  async layName(el) {
+    const d = el.dataset; const key = d.sun + '|' + d.svc; const name = el.value.trim();
+    const { data, error } = await sb.rpc('save_layout', { p_sunday: d.sun, p_svc: d.svc, p_item: d.item, p_tag: d.tag, p_name: name });
+    if (error) { toast(/save_layout|PGRST202|42883/.test(error.message + error.code) ? t('dbUpdate', { file: 'migrations/011-service-layout.sql' }) : t('layoutSaveFail') + ' ' + error.message); return; }
+    const r = S.reports[key] || (S.reports[key] = { notes: {}, summary: '', followups: '', layout: {} });
+    r.layout = data?.layout || r.layout; render();
+  },
+  phEdit(el) {
+    const d = draftOf(el.dataset.tid); const o = d.order.find(x => x.id === el.dataset.id); if (!o) return;
+    ui.phDraft = { tid: el.dataset.tid, itemId: o.id, item: o.item, list: tagsOf(o) }; modal(placeholderForm());
+  },
+  phRole(el) { readPh(); const x = ui.phDraft.list[+el.dataset.i]; if (x.color === ROLES[x.prevRole || 'other']?.color) x.color = ROLES[x.role].color; modal(placeholderForm()); },
+  phAdd() { readPh(); const used = new Set(ui.phDraft.list.map(x => x.id)); let n = 1; while (used.has('r' + n)) n++; ui.phDraft.list.push({ id: 'r' + n, role: 'pastor', label: '', color: ROLES.pastor.color, pos: '' }); modal(placeholderForm()); },
+  phDel(el) { readPh(); ui.phDraft.list.splice(+el.dataset.i, 1); modal(placeholderForm()); },
+  phSave() {
+    readPh(); const p = ui.phDraft; const d = draftOf(p.tid); const o = d.order.find(x => x.id === p.itemId);
+    if (o) o.roles = p.list.filter(x => x.role !== 'other' || x.label).map(({ id, role, label, color, pos }) => ({ id, role, label: role === 'other' ? label : '', color, pos }));
+    ui.phDraft = null; closeModal(); render();
+  },
+
+  /* administrators */
+  async adminAdd() {
+    if (!me.admin) return;
+    const email = (val('admEmail').trim() || val('admPick')).toLowerCase(); const msg = document.getElementById('admMsg');
+    const say = text => { if (msg) { msg.textContent = text; msg.style.color = 'var(--bad)'; } };
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say(t('badEmails', { list: email || '—' }));
+    if (S.admins[email]) return say(t('adminAlready', { email }));
+    if (await q(sb.from('admins').insert({ email }))) { S.admins[email] = { by: String(me.email || '').toLowerCase(), at: Date.now() }; render(); toast(t('adminAdded', { email })); reload(); }
+  },
+  adminRemove(el) { if (me.admin && Object.keys(S.admins).length > 1) modal(removeForm(el.dataset.email)); },
+  async adminRemoveGo(el) {
+    const email = el.dataset.email; closeModal();
+    if (!await q(sb.from('admins').delete().eq('email', email))) return;
+    delete S.admins[email]; toast(t('adminRemoved', { email }));
+    if (email === String(me.email || '').toLowerCase()) { me.admin = false; ui.psub = 'all'; }
+    render(); reload();
+  },
+
+  /* attendance & people reports (009) */
+  rptOpen(el) { ui.rpt.open = el.dataset.id; ui.rpt.sel = []; render(); window.scrollTo(0, 0); },
+  rptBack() { ui.rpt.open = null; ui.rpt.sel = []; render(); },
+  rptParam(el) { const id = ui.rpt.open; if (!id) return; const p = ui.rpt.params[id] || (ui.rpt.params[id] = { ...reportDef(id).params }); p[el.dataset.k] = el.value; render(); },
+  rptRefresh() { const id = ui.rpt.open; if (id) { delete ui.rpt.cache[keyOf(id)]; render(); } },
+  rptCsv() { const id = ui.rpt.open; const rows = ui.rpt.cache[keyOf(id)]?.rows; if (rows) download(csvName(reportDef(id), T.todayIso), reportCsv(reportDef(id), rows, rptCtx())); },
+  rptSel(el) { const s = new Set(ui.rpt.sel); el.checked ? s.add(el.dataset.id) : s.delete(el.dataset.id); ui.rpt.sel = [...s]; render(); },
+  rptSelAll(el) { const rows = ui.rpt.cache[keyOf(ui.rpt.open)]?.rows || []; ui.rpt.sel = el.checked ? rows.map(r => r.member_id) : []; render(); },
+  rptFlow() { if (ui.rpt.sel.length) modal(flowPickForm()); },
+  async rptFlowGo() {
+    const flow = val('rptFlowId'); const ids = [...ui.rpt.sel]; if (!flow || !ids.length) return; closeModal();
+    let n = 0; for (const id of ids) if (await q(sb.rpc('flow_enroll', { p_member: id, p_flow: flow }))) n++;
+    ui.rpt.sel = []; reload(); toast(t('addedToFlowN', { n }));
+  },
+  rschNew() { if (me.admin && ui.rpt.open) modal(scheduleForm(ui.rpt.open)); },
+  async rschSave(el) {
+    const { ok, bad } = parseEmails(val('rsTo')); const err = document.getElementById('rsErr');
+    if (bad.length || !ok.length) { if (err) err.textContent = t('badEmails', { list: bad.join(', ') || '—' }); return; }
+    if (ok.length > 20) { if (err) err.textContent = t('badEmails', { list: ok.slice(20).join(', ') }); return; }
+    const id = el.dataset.id; const row = { report: id, params: { ...(ui.rpt.params[id] || reportDef(id).params) }, recipients: ok, weekday: +val('rsDay'), lang: val('rsLang') === 'fr' ? 'fr' : 'en' };
+    closeModal(); if (await q(sb.from('report_schedules').insert(row))) { ui.rpt.sched.loaded = false; toast(t('saved')); loadSchedules(); }
+  },
+  async rschToggle(el) { const x = ui.rpt.sched.rows.find(r => r.id === el.dataset.id); if (x && await q(sb.from('report_schedules').update({ active: !x.active }).eq('id', x.id))) loadSchedules(); },
+  async rschDel(el) { if (await q(sb.from('report_schedules').delete().eq('id', el.dataset.id))) loadSchedules(); },
+
+  /* messaging */
+  contact(el) {
+    const d = el.dataset; const src = { kind: d.src };
+    if (d.src === 'report') { src.kind = 'selection'; src.ids = [...ui.rpt.sel]; }
+    if (d.src === 'selection') src.ids = [...ui.psel];
+    if (d.src === 'filter') src.filters = { ...ui.pf };
+    if (d.src === 'person') src.id = d.id;
+    if (d.src === 'service') Object.assign(src, { sunId: d.sun, svc: d.svc });
+    if (d.src === 'team') src.teamId = d.team;
+    const ids = sourceIds(src);
+    ui.compose = { key: newKey(), source: src, ids, label: d.label || '', channel: 'sms', subject: '', body: '', step: 'edit', error: '', result: null };
+    modal(composeView());
+  },
+  cmpChannel(el) { ui.compose.channel = el.value; modal(composeView()); document.getElementById('cmpBody')?.focus(); },
+  cmpSubject(el) { ui.compose.subject = el.value; },
+  cmpBody(el) { ui.compose.body = el.value; const n = document.getElementById('cmpCount'); if (n) n.innerHTML = counterHtml(); },
+  cmpMerge() {
+    const b = document.getElementById('cmpBody'); if (!b) return;
+    const at = b.selectionStart ?? b.value.length; b.value = b.value.slice(0, at) + '{first_name}' + b.value.slice(b.selectionEnd ?? at);
+    ui.compose.body = b.value; b.focus(); b.selectionStart = b.selectionEnd = at + 12; const n = document.getElementById('cmpCount'); if (n) n.innerHTML = counterHtml();
+  },
+  cmpReview() {
+    const c = ui.compose; c.body = val('cmpBody') || c.body; c.subject = document.getElementById('cmpSubject') ? val('cmpSubject') : c.subject;
+    if (!c.body.trim()) { toast(t('message')); document.getElementById('cmpBody')?.focus(); return; }
+    if (c.channel !== 'sms' && !c.subject.trim()) { toast(t('subject')); document.getElementById('cmpSubject')?.focus(); return; }
+    c.step = 'confirm'; c.error = ''; modal(composeView());
+  },
+  cmpBack() { ui.compose.step = 'edit'; modal(composeView()); },
+  async cmpSend() {
+    const c = ui.compose; if (c.step === 'sending') return;
+    const a = audience(c.ids, c.channel);
+    c.step = 'sending'; modal(composeView());
+    const r = await sendMessage({ key: c.key, channel: c.channel, subject: c.subject.trim(), body: c.body.trim(), recipients: a.people.map(m => m.id), source: { ...c.source, label: c.label } });
+    if (ui.compose !== c) return;
+    if (r.ok) { c.step = 'done'; c.result = r.body; if (ui.msgs) ui.msgs.loaded = false; } else { c.step = 'confirm'; c.error = r.error; }
+    modal(composeView());
+  },
+  cmpViewSent() { closeModal(); ui.tab = 'reports'; ui.rsub = 'messages'; ui.rep = null; if (ui.msgs) ui.msgs.loaded = false; render(); },
+  msgRefresh() { const m = msgState(); m.loaded = false; m.open = null; render(); },
+  msgOpen(el) { const m = msgState(); m.open = el.dataset.id; m.recips = null; render(); window.scrollTo(0, 0); loadRecipients(m.open); },
+  msgClose() { msgState().open = null; render(); },
+
+  /* follow-ups */
+  flowPick(el) { ui.flow = el.dataset.id; render(); },
+  fuMine(el) { ui.fmine = el.checked; render(); },
+  async fuAssign(el) { if (await q(sb.from('flow_entries').update({ assignee: el.value || null }).eq('id', el.dataset.id))) { S.fentries[el.dataset.id].assignee = el.value || null; reload(); toast(t('saved')); } },
+  async fuDue(el) { if (!el.value) return; if (await q(sb.from('flow_entries').update({ due_date: el.value }).eq('id', el.dataset.id))) { S.fentries[el.dataset.id].due = el.value; reload(); render(); } },
+  fuDone(el) { modal(doneForm(el.dataset.id)); document.getElementById('fuNote')?.focus(); },
+  async fuDoneGo(el) {
+    el.disabled = true; const note = val('fuNote').trim();
+    const r = await q(sb.rpc('flow_advance', { p_entry: el.dataset.id, p_note: note || null }));
+    closeModal(); if (!r) return;
+    reload(); toast(t('saved')); if (ui.person) loadProfile(ui.person);
+  },
+  fuAdd(el) { modal(addForm(el.dataset.member || ui.person || '')); },
+  async fuAddGo() {
+    const member = val('fuMember'), flow = val('fuFlow'); if (!member || !flow) return; closeModal();
+    if (await q(sb.rpc('flow_enroll', { p_member: member, p_flow: flow }))) { reload(); toast(t('saved')); if (ui.person) loadProfile(ui.person); }
+  },
+  flowEdit(el) {
+    if (!me.admin) return; const id = el.dataset.id || '';
+    ui.flowDraft = id ? { id, name: S.flows[id].name, nameFr: S.flows[id].nameFr || '', steps: stepsOf(id).map(s => ({ id: s.id, title: s.title, titleFr: s.titleFr || '', assignee: s.assignee || '', days: s.days })), removed: [] }
+      : { id: '', name: '', nameFr: '', steps: [{ id: null, title: '', titleFr: '', assignee: '', days: 3 }], removed: [] };
+    modal(flowForm());
+  },
+  flowStepAdd() { syncFlowDraft(); ui.flowDraft.steps.push({ id: null, title: '', titleFr: '', assignee: '', days: 3 }); modal(flowForm()); },
+  flowStepMove(el) { syncFlowDraft(); const i = +el.dataset.i, st = ui.flowDraft.steps; if (i > 0) [st[i - 1], st[i]] = [st[i], st[i - 1]]; modal(flowForm()); },
+  flowStepDel(el) { syncFlowDraft(); const [s] = ui.flowDraft.steps.splice(+el.dataset.i, 1); if (s?.id) ui.flowDraft.removed.push(s.id); modal(flowForm()); },
+  async flowSave() {
+    syncFlowDraft(); const d = ui.flowDraft; const steps = d.steps.filter(s => String(s.title).trim());
+    if (!d.name.trim()) { toast(t('flowName')); return; } if (!steps.length) { toast(t('addStep')); return; }
+    closeModal();
+    let id = d.id;
+    if (id) { if (!await q(sb.from('flows').update({ name: d.name.trim(), name_fr: d.nameFr.trim() || null }).eq('id', id))) return; }
+    else { const f = await q(sb.from('flows').insert({ name: d.name.trim(), name_fr: d.nameFr.trim() || null }).select('id').single()); if (!f) return; id = f.id; }
+    const row = (s, i) => ({ flow_id: id, sort: i, title: s.title.trim(), title_fr: String(s.titleFr || '').trim() || null, default_assignee: s.assignee || null, due_days: +s.days || 0 });
+    const old = steps.map((s, i) => ({ s, i })).filter(x => x.s.id).map(({ s, i }) => ({ id: s.id, ...row(s, i) }));
+    const add = steps.map((s, i) => ({ s, i })).filter(x => !x.s.id).map(({ s, i }) => row(s, i));
+    if (old.length && !await q(sb.from('flow_steps').upsert(old))) return;
+    if (add.length && !await q(sb.from('flow_steps').insert(add))) return;
+    if (d.removed.length) await q(sb.from('flow_steps').delete().in('id', d.removed));
+    ui.flowDraft = null; ui.flow = id; reload(); toast(t('saved'));
+  },
 
   /* events */
   evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
@@ -371,7 +663,7 @@ export const H = {
   oAdd(el) { const d = draftOf(el.dataset.tid); const id = 'i' + uid(); d.order.push({ id, item: '', min: 5 }); render(); document.getElementById(`ti-${el.dataset.tid}-${id}`)?.focus(); },
   async tSave(el) {
     const tid = el.dataset.tid; const d = draftOf(tid); await seedTemplates(tid);
-    const row = { id: tid, name: d.name.trim() || 'Untitled template', lang: d.lang, items: d.order.filter(o => o.item.trim()).map(o => ({ id: o.id, item: o.item.trim(), min: +o.min || 0 })) };
+    const row = { id: tid, name: d.name.trim() || 'Untitled template', lang: d.lang, items: d.order.filter(o => o.item.trim()).map(o => ({ id: o.id, item: o.item.trim(), min: +o.min || 0, ...(tagsOf(o).length ? { roles: tagsOf(o).map(({ id, role, label, color, pos }) => ({ id, role, color, ...(label ? { label } : {}), ...(pos ? { pos } : {}) })) } : {}) })) };
     if (await q(sb.from('templates').upsert(row))) { delete ui.drafts[tid]; toast(`${row.name} saved.`); reload(); }
   },
   async tDel(el) {
@@ -402,6 +694,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor']);
-export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll', 'layName', 'phRole']);
+export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
 export { TABS, ic };

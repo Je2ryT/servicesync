@@ -1,11 +1,15 @@
 import { S, T, ui, me } from '../state.js';
 import { esc, fmt, ym } from '../util.js';
+import { t, t as tr } from '../i18n.js';
+import { vDirectory } from './directory.js';
+import { vAdmins } from './admins.js';
 import { ic } from '../icons.js';
 import { people, activePeople, myPerson, loadFor, fairness, heavy, positionsOf, teamsList, allPositions, qualified } from '../domain.js';
 
 export function vPeople() {
-  const seg = `<div><div class="seg"><button data-act="psub" data-v="people" aria-pressed="${ui.psub !== 'teams'}">People</button><button data-act="psub" data-v="teams" aria-pressed="${ui.psub === 'teams'}">Teams &amp; positions</button></div></div>`;
-  return ui.psub === 'teams' ? vTeams(seg) : vRoster(seg);
+  const seg = `<div><div class="seg"><button data-act="psub" data-v="all" aria-pressed="${ui.psub === 'all'}">${esc(t('everyone'))}</button><button data-act="psub" data-v="people" aria-pressed="${ui.psub === 'people'}">${esc(t('servingTeam'))}</button><button data-act="psub" data-v="teams" aria-pressed="${ui.psub === 'teams'}">${esc(t('teamsPositions'))}</button>${me.admin ? `<button data-act="psub" data-v="admins" aria-pressed="${ui.psub === 'admins'}">${esc(t('admins'))}</button>` : ''}</div></div>`;
+  if (ui.psub === 'admins' && me.admin) return vAdmins(seg);
+  return ui.psub === 'teams' ? vTeams(seg) : ui.psub === 'people' ? vRoster(seg) : vDirectory(seg);
 }
 
 function vRoster(seg) {
@@ -16,7 +20,7 @@ function vRoster(seg) {
     const n = loadFor(t.id, m);
     const offs = Object.entries(S.off[t.id]?.dates || {}).filter(([d, v]) => v && d >= T.todayIso).map(([d]) => d).sort();
     const canEdit = me.admin || t.id === mp; const pos = positionsOf(t.id);
-    return `<div class="card mem"><div class="top"><div><div class="row"><b>${esc(t.name)}</b>${t.active === false ? '<span class="pill mute">INACTIVE</span>' : ''}</div><div class="ph">${esc(t.phone || 'No phone')}</div></div>${canEdit ? `<button class="ib" data-act="editPerson" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">${ic('pencil')}</button>` : ''}</div>
+    return `<div class="card mem"><div class="top"><div><div class="row"><b>${esc(t.name)}</b>${me.admin && t.email && S.admins[String(t.email).toLowerCase()] ? `<span class="pill role">${esc(tr('adminPill'))}</span>` : ''}${t.active === false ? '<span class="pill mute">INACTIVE</span>' : ''}</div><div class="ph">${esc(t.phone || 'No phone')}</div></div>${canEdit ? `<button class="ib" data-act="editPerson" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">${ic('pencil')}</button>` : ''}</div>
       <div class="row">${pos.length ? pos.map(p => `<span class="pill role">${esc(p.name)}</span>`).join('') : '<span class="pill warn">No positions yet</span>'}</div>
       <div class="row">${t.langs?.en !== false ? '<span class="pill info">English</span>' : ''}${t.langs?.fr !== false ? '<span class="pill info">French</span>' : ''}${heavy(n, f.avg) ? '<span class="pill bad">Heavy load</span>' : ''}</div>
       <div class="meta"><strong>${n}</strong> assignment${n === 1 ? '' : 's'} this month${offs.length ? ' · Off: ' + offs.slice(0, 3).map(d => esc(fmt(d, { month: 'short', day: 'numeric' }))).join(', ') : ''}</div>
@@ -31,7 +35,7 @@ function vTeams(seg) {
   if (!teams.length) return h + `<div class="card empty">${me.admin ? 'No teams yet. Create one, for example Worship, Sound or Ushers.' : 'No teams set up yet.'}</div>`;
   h += '<div class="grid2">' + teams.map(t => {
     const list = pos.filter(p => p.team === t.id);
-    return `<div class="card"><div class="ch"><h3>${esc(t.name)}</h3>${me.admin ? `<div class="row"><button class="btn link" data-act="editPosition" data-team="${esc(t.id)}">${ic('plus')} Position</button><button class="ib" data-act="editTeam" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">${ic('pencil')}</button></div>` : ''}</div>
+    return `<div class="card"><div class="ch"><h3>${esc(t.name)}</h3><div class="row">${ui.peopleMissing ? '' : `<button class="ib" data-act="contact" data-src="team" data-team="${esc(t.id)}" data-label="${esc(t.name)}" aria-label="${esc(tr('contactTeam'))}" title="${esc(tr('contactTeam'))}">${ic('send')}</button>`}${me.admin ? `<button class="btn link" data-act="editPosition" data-team="${esc(t.id)}">${ic('plus')} Position</button><button class="ib" data-act="editTeam" data-id="${esc(t.id)}" aria-label="Edit ${esc(t.name)}">${ic('pencil')}</button>` : ''}</div></div>
       ${list.length ? list.map(p => {
         const who = ppl.filter(x => qualified(x.id, p.id));
         return `<div class="prow"><div class="row" style="justify-content:space-between"><div class="row"><b>${esc(p.name)}</b>${p.active === false ? '<span class="pill mute">PAUSED</span>' : ''}</div><div class="row"><span class="pill mute">NEED ${p.min} · WANT ${p.pref}</span>${me.admin ? `<button class="ib" data-act="editPosition" data-id="${esc(p.id)}" aria-label="Edit ${esc(p.name)}">${ic('pencil')}</button>` : ''}</div></div>
