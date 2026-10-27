@@ -25,6 +25,8 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 007 | `007-messaging.sql` | Email and text messages: message log, recipients, opt-out history | Sending also needs the Vercel settings below. |
 | 008 | `008-followups.sql` | Follow-up flows (Newcomer flow with four steps), board, weekly reminder | From now on, new Visitors join the Newcomer flow automatically. People already in Visitors aren't added; use *Add to a follow-up* for them. The weekly email also needs `CRON_SECRET` below. |
 | 009 | `009-reports.sql` | Attendance & people reports, weekly report emails | Reports read what's already there, so they include history from before 009. Weekly emails need the messaging settings and `CRON_SECRET`. |
+| 010 | `010-admins.sql` | Manage administrators in the app (People → Administrators) | Emails are stored lower-case, the last administrator can't be removed, and changes go in the activity log. |
+| 011 | `011-service-layout.sql` | Printable service layout: names typed for one service | Placeholders themselves live in the templates, so the layout shows and prints before 011; typing a name needs 011. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -74,6 +76,19 @@ The **Follow-ups** tab shows one board per flow, with a column for each step. Th
 | Variable | What it is |
 |---|---|
 | `CRON_SECRET` | Any long random text. Vercel sends it to `/api/cron` so nobody else can trigger the emails |
+
+## Printable service layout
+
+Print the order of service before every service, with who leads each part.
+
+1. **Templates → Order of service**: under each part, press **Add placeholder**. Pick the role (Pastor, Moderator, Interpreter, Choir, or **Other** with your own label such as Usher or Reader) and the tag colour: **blue, white or yellow**. Press **Done**, then **Save** the template. The default templates start with Moderator (welcome), Choir (worship), and Pastor and Interpreter (sermon).
+2. **Reports → Layout** next to a service (or **Service layout** on its report): each placeholder shows its coloured tag and a name.
+   - Names fill in from the schedule: from the position you linked to the placeholder, or a position with the same name (Pastor, Moderator, Interpreter/Interprète, Choir/Chorale).
+   - Type a different name to change it for that service only. Leave it empty to go back to the schedule.
+   - Places nobody fills print as a blank line, to write in by hand.
+3. Press **Print**. The sheet has the church logo, the date and times, a Notes area, and prints in colour. French services print in French.
+
+Administrators can fill in any service; people on the roster can fill in published Sundays (the same rule as service reports).
 
 ## Attendance & people reports
 
@@ -203,9 +218,14 @@ Without this step, the sign-in email links point to the wrong place.
 | Approve or decline swaps | ✓ | |
 | Tick checklists in Live view | ✓ | ✓ |
 
-To add another administrator, run this in the Supabase SQL Editor:
+### Adding or removing administrators
+
+Go to **People → Administrators** (administrators only). Pick someone from the serving team, or type any email address, then press **Add administrator**. To take someone off the list, press **Remove** next to their name. They stay on the serving team with a team member's access. The change applies the next time they open or reload the app. The last administrator can't be removed, so the church is never locked out.
+
+Before migration 010, or if you're ever locked out, you can do the same in the Supabase SQL Editor:
 ```sql
 insert into admins (email) values ('their@email.com');
+delete from admins where email = 'their@email.com';
 ```
 
 ## Notes

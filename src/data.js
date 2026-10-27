@@ -23,7 +23,7 @@ export async function q(p) {
   return data ?? true;
 }
 
-const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events', 'service_reports', 'categories', 'families', 'saved_filters', 'member_stats', 'flows', 'flow_steps', 'flow_entries'];
+const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events', 'service_reports', 'categories', 'families', 'saved_filters', 'member_stats', 'flows', 'flow_steps', 'flow_entries', 'admins'];
 
 export async function loadAll() {
   const since = new Date(); since.setDate(since.getDate() - 180);   // attendance: the last six months is plenty for the screens
@@ -63,8 +63,9 @@ export async function loadAll() {
   const events = {}; rows('events').forEach(r => { events[r.id] = { title: r.title, date: r.date, start: r.start_time || '', end: r.end_time || '', location: r.location || '', description: r.description || '' }; });
   ui.reportsMissing = !!by.service_reports.error;   // migration 004 not run yet
   const reports = {}; rows('service_reports').forEach(r => { reports[r.sunday_id + '|' + r.svc] = reportRow(r); });
+  const admins = {}; rows('admins').forEach(r => { admins[String(r.email).toLowerCase()] = { by: r.added_by || '', at: r.added_at ? Date.parse(r.added_at) : null }; });   // only administrators can read this list
   const asg = {}; rows('assignments').forEach(r => { asg[r.id] = { sunId: r.sunday_id, svc: r.svc, pos: r.position_id, person: r.person_id, status: r.status }; });
-  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events, reports, cats, families, filters, mstats, flows, steps, fentries });
+  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events, reports, cats, families, filters, mstats, flows, steps, fentries, admins });
   ui.needsMigration = false;
   if (ui.chkDraft && !ui.chkDraft.dirty) ui.chkDraft = null;
   ui.ready = true; onLoaded();
@@ -100,7 +101,7 @@ export async function timerAction(sunId, svc, op, arg = {}) {
 }
 
 /** A service_reports row as the app uses it. */
-export const reportRow = r => ({ notes: r.notes || {}, summary: r.summary || '', followups: r.followups || '', updatedAt: Date.parse(r.updated_at), by: r.updated_by });
+export const reportRow = r => ({ notes: r.notes || {}, summary: r.summary || '', followups: r.followups || '', layout: r.layout || {}, updatedAt: Date.parse(r.updated_at), by: r.updated_by });
 
 /** Save one part of a service report (a segment's note, the summary or follow-ups). */
 export async function saveReport(sunId, svc, key, item, text) {
