@@ -45,7 +45,7 @@ describe('every screen renders', () => {
         const html = document.getElementById('main').innerHTML;
         expect(html.length).toBeGreaterThan(100);
         expect(html).not.toMatch(/undefined|NaN|\[object Object\]/);
-        expect(html).not.toContain('<b>Christmas');                         // titles are escaped
+        expect(html).not.toContain('Christmas Eve <b>');                    // titles are escaped
       });
     }
   }

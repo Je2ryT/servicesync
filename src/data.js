@@ -60,7 +60,8 @@ export async function loadAll() {
   const fentries = {}; rows('flow_entries').forEach(r => { fentries[r.id] = { flow: r.flow_id, member: r.member_id, step: r.step_id, assignee: r.assignee || null, due: r.due_date || null, status: r.status, notes: r.notes || '', created: Date.parse(r.created_at), stepStarted: Date.parse(r.step_started_at), completed: r.completed_at ? Date.parse(r.completed_at) : null }; });
   const mstats = {}; rows('member_stats').forEach(r => { mstats[r.member_id] = { first: r.first_attended, last: r.last_attended, visits: r.visits, en: r.visits_en, fr: r.visits_fr }; });
   const att = {}; rows('attendance').forEach(r => { att[r.member_id + '|' + r.date + '|' + r.svc] = { member: r.member_id, date: r.date, svc: r.svc, at: Date.parse(r.at), by: r.by_coord }; });
-  const events = {}; rows('events').forEach(r => { events[r.id] = { title: r.title, date: r.date, start: r.start_time || '', end: r.end_time || '', location: r.location || '', description: r.description || '' }; });
+  const events = {}; rows('events').forEach(r => { events[r.id] = { title: r.title, date: r.date, start: r.start_time || '', end: r.end_time || '', location: r.location || '', description: r.description || '', serviceId: r.service_id || null }; });
+  ui.eventLinkMissing = rows('events').length > 0 && !('service_id' in rows('events')[0]);   // migration 015 not run yet
   ui.reportsMissing = !!by.service_reports.error;   // migration 004 not run yet
   const reports = {}; rows('service_reports').forEach(r => { reports[r.sunday_id + '|' + r.svc] = reportRow(r); });
   ui.permsMissing = rows('admins').length > 0 && !('perms' in rows('admins')[0]);   // migration 012 not run yet

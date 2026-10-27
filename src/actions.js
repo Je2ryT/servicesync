@@ -479,8 +479,8 @@ export const H = {
   },
 
   /* service layout */
-  openLayout(el) { ui.layout = el.dataset.id + '|' + el.dataset.svc; ui.tab = 'reports'; ui.rsub = 'reports'; render(); window.scrollTo(0, 0); },
-  layBack() { ui.layout = null; render(); window.scrollTo(0, 0); },
+  openLayout(el) { ui.layoutFrom = ui.tab === 'reports' ? null : ui.tab; ui.layout = el.dataset.id + '|' + el.dataset.svc; ui.tab = 'reports'; ui.rsub = 'reports'; render(); window.scrollTo(0, 0); },
+  layBack() { ui.layout = null; if (ui.layoutFrom) { ui.tab = ui.layoutFrom; ui.layoutFrom = null; } render(); window.scrollTo(0, 0); },
   layPrint() { window.print(); },
   async layName(el) {
     const d = el.dataset; const key = d.sun + '|' + d.svc; const name = el.value.trim();
@@ -657,9 +657,18 @@ export const H = {
     const start = val('eStart'), end = val('eEnd');
     if (start && end && end <= start) { toast('The end time has to be after the start.'); return; }
     const row = { title, date, start_time: start || null, end_time: end || null, location: val('eLoc').trim() || null, description: val('eDesc').trim() || null };
+    const plan = !!document.getElementById('ePlan')?.checked; const tpl = val('eTpl');   // read before the form closes
     const id = el.dataset.id; closeModal();
-    const r = id ? await q(sb.from('events').update(row).eq('id', id)) : await q(sb.from('events').insert({ ...row, created_by: myPerson() }));
-    if (r) { ui.evMonth = date.slice(0, 7); ui.evDay = date; reload(); toast(id ? 'Event saved.' : `Added ${title}.`); }
+    const saved = id ? await q(sb.from('events').update(row).eq('id', id).select('id').single()) : await q(sb.from('events').insert({ ...row, created_by: myPerson() }).select('id').single());
+    if (!saved) return;
+    const eid = id || saved.id; const linked = id && S.events[id]?.serviceId && S.sun[S.events[id].serviceId] ? S.events[id].serviceId : null;
+    if (plan && !ui.eventLinkMissing) {
+      // keep the event's service (a special event in the schedule) in step with the event
+      const sid = linked || date + '-ev-' + uid(); const old = S.sun[sid] || { published: false };
+      const ok = await saveSun(sid, { ...old, date, title, special: true, services: { ev: { ...(old.services?.ev || {}), start: start || '18:00', tpl } } });
+      if (ok && !linked) await q(sb.from('events').update({ service_id: sid }).eq('id', eid));
+    } else if (!plan && linked) await q(sb.from('events').update({ service_id: null }).eq('id', eid));   // unlink; the service stays in the schedule
+    ui.evMonth = date.slice(0, 7); ui.evDay = date; reload(); toast(id ? 'Event saved.' : `Added ${title}.`);
   },
   async delCalEvent(el) { if (!tapTwice(el, 'Tap again to delete')) return; closeModal(); if (await q(sb.from('events').delete().eq('id', el.dataset.id))) reload(); },
 
