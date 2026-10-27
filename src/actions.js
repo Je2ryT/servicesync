@@ -3,7 +3,7 @@ import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
 import { ic } from './icons.js';
-import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity } from './data.js';
+import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity, loadProfile } from './data.js';
 import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
@@ -17,7 +17,11 @@ import { eventForm } from './views/events.js';
 import { attKey } from './members.js';
 import { importView, importPlan } from './views/import.js';
 import { activityListHtml } from './views/activity.js';
-import { parseCsv, detectColumns } from './importer.js';
+import { peopleRowsHtml, bulkBarHtml, personForm, categoryForm, saveFilterForm, manageFiltersForm } from './views/directory.js';
+import { filterPeople, toCsv, cats, catOf } from './people.js';
+import { t } from './i18n.js';
+import { parseCsv, detectColumns, memberRows, newFamilies } from './importer.js';
+import { fold } from './members.js';
 import { timeRange } from './views/shared.js';
 
 /* ---------- helpers ---------- */
@@ -68,6 +72,20 @@ function refreshCheckin() {
   const l = document.getElementById('ciList');
   if (l && document.activeElement?.id === 'ciQ') l.innerHTML = ciListHtml(); else render();
 }
+
+/* ---------- people ---------- */
+function refreshPeople() {
+  const l = document.getElementById('pList'), b = document.getElementById('pBulk');
+  if (l) l.innerHTML = peopleRowsHtml(); if (b) b.innerHTML = bulkBarHtml();
+}
+function download(name, text, type = 'text/csv;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([text], { type })); const a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function syncCatDraft() {
+  document.querySelectorAll('.cat-ed [data-ci]').forEach(el => { const c = ui.catDraft[+el.dataset.ci]; if (!c) return; if (el.dataset.f === 'hidden') c.hidden = el.checked; else c[el.dataset.f] = el.value; });
+}
+const chunks = (a, n = 200) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 /* ---------- live timer ---------- */
 const lastTap = { k: '', t: 0 };
@@ -180,7 +198,7 @@ export const H = {
   async cancelSwap(el) { if (await q(sb.from('swaps').delete().eq('id', el.dataset.id))) reload(); },
 
   /* people */
-  psub(el) { ui.psub = el.dataset.v; render(); },
+  psub(el) { ui.psub = el.dataset.v; ui.person = null; ui.prof = null; render(); },
   editPerson(el) {
     const id = el.dataset.id; const adm = me.admin;
     const t = id ? S.people[id] : { name: '', email: '', phone: '', langs: { en: true, fr: true }, active: true, max: 4 };
@@ -232,9 +250,14 @@ export const H = {
   addMember(el) { modal(memberForm(null, el.dataset.name || '')); },
   editMember(el) { modal(memberForm(el.dataset.id)); },
   async saveMember(el) {
-    const name = val('mName').trim().replace(/\s+/g, ' '); if (!name) { toast('Enter a name.'); return; }
+    const rich = !!document.getElementById('mFirst');   // migration 006: first/last name and a category
+    const first = val('mFirst').trim().replace(/\s+/g, ' '), last = val('mLast').trim().replace(/\s+/g, ' ');
+    const name = rich ? [first, last].filter(Boolean).join(' ') : val('mName').trim().replace(/\s+/g, ' ');
+    if (!name) { toast('Enter a name.'); return; }
     const id = el.dataset.id; const checkIn = !id && !!document.getElementById('mIn')?.checked;
-    const row = { name, phone: val('mPhone').trim() || null, email: val('mEmail').trim().toLowerCase() || null, lang: val('mLang') || 'fr', status: val('mStatus') || 'newcomer', household: val('mHouse').trim() || null };
+    const row = { name, phone: val('mPhone').trim() || null, email: val('mEmail').trim().toLowerCase() || null, lang: val('mLang') || 'fr', household: val('mHouse').trim() || null };
+    if (rich) Object.assign(row, { first_name: first || null, last_name: last || null, category_id: val('mCat') || 'visitors' });
+    else row.status = val('mStatus') || 'newcomer';
     if (me.admin && document.getElementById('mNotes')) row.notes = val('mNotes').trim() || null;
     closeModal();
     let saved;
@@ -256,19 +279,31 @@ export const H = {
     const rows = parseCsv(await f.text());
     if (rows.length < 2) { ui.imp = { error: 'No people found in that file. Check it is the CSV from People → Export.' }; modal(importView()); return; }
     const headers = rows[0];
-    ui.imp = { fileName: f.name, headers, rows: rows.slice(1), map: detectColumns(headers), lang: 'fr', status: 'member' };
+    ui.imp = { fileName: f.name, headers, rows: rows.slice(1), map: detectColumns(headers), lang: 'fr', status: 'member', cat: 'congregation' };
     modal(importView());
   },
   impMap(el) { if (el.value === '') delete ui.imp.map[el.dataset.k]; else ui.imp.map[el.dataset.k] = +el.value; modal(importView()); },
   impOpt(el) { ui.imp[el.dataset.k] = el.value; modal(importView()); },
   async impRun(el) {
     const { add } = importPlan(); if (!add.length) return;
-    el.disabled = true; const by = myPerson(); let done = 0;
-    for (let i = 0; i < add.length; i += 200) {
-      el.textContent = `Importing… ${done} of ${add.length}`;
-      const ok = await q(sb.from('members').insert(add.slice(i, i + 200).map(m => ({ ...m, created_by: by }))));
+    el.disabled = true; const by = myPerson(); let done = 0; const rich = !ui.peopleMissing;
+    let rows = memberRows(add, rich);
+    if (rich) {   // families first, so people can be linked to them
+      const have = new Map(Object.entries(S.families).map(([id, f]) => [fold(f.name), id]));
+      const names = newFamilies(add, Object.values(S.families));
+      if (names.length) {
+        el.textContent = `Creating ${names.length} families…`;
+        const made = await q(sb.from('families').insert(names.map(name => ({ name }))).select('id,name'));
+        if (!made) { el.disabled = false; el.textContent = 'Try again'; return; }
+        (Array.isArray(made) ? made : []).forEach(f => have.set(fold(f.name), f.id));
+      }
+      rows = rows.map(r => ({ ...r, family_id: r.household ? have.get(fold(r.household)) || null : null }));
+    }
+    for (let i = 0; i < rows.length; i += 200) {
+      el.textContent = `Importing… ${done} of ${rows.length}`;
+      const ok = await q(sb.from('members').insert(rows.slice(i, i + 200).map(m => ({ ...m, created_by: by }))));
       if (!ok) { el.disabled = false; el.textContent = 'Try again'; toast(done ? `Imported ${done} before an error. Try again to add the rest.` : 'Nothing was imported.'); reload(); return; }
-      done += Math.min(200, add.length - i);
+      done += Math.min(200, rows.length - i);
     }
     ui.imp = null; closeModal(); reload(); toast(`Imported ${done} ${done === 1 ? 'person' : 'people'} from Elvanto.`);
   },
@@ -293,6 +328,89 @@ export const H = {
   actText(el) { ui.act.text = el.value; const l = document.getElementById('actList'); if (l) l.innerHTML = activityListHtml(); },
   actArea(el) { ui.act.area = el.value; render(); },
   actActor(el) { ui.act.actor = el.value; render(); },
+
+  /* language */
+  setLang(el) { ui.lang = el.dataset.v === 'fr' ? 'fr' : 'en'; try { localStorage.setItem('ss-lang', ui.lang); } catch (e) { /* ignore */ } render(); },
+
+  /* people directory */
+  pf(el) { ui.pf = { ...ui.pf, [el.dataset.k]: el.value }; render(); },
+  pfQ(el) { ui.pf = { ...ui.pf, q: el.value }; refreshPeople(); },
+  pfClear() { ui.pf = {}; ui.psel = []; render(); },
+  pfLoad(el) { const f = S.filters[el.value]; if (!f) return; ui.pf = { ...f.filters }; ui.psel = []; render(); },
+  pfSave() { modal(saveFilterForm()); },
+  async pfSaveGo() {
+    const name = val('sfName').trim(); if (!name) { toast(t('filterName')); return; }
+    const shared = !!document.getElementById('sfShared')?.checked; closeModal();
+    if (await q(sb.from('saved_filters').insert({ name, filters: { ...ui.pf }, shared }))) { reload(); toast(t('saved')); }
+  },
+  pfManage() { modal(manageFiltersForm()); },
+  async pfDel(el) { if (!tapTwice(el, t('tapAgain'))) return; if (await q(sb.from('saved_filters').delete().eq('id', el.dataset.id))) { delete S.filters[el.dataset.id]; modal(manageFiltersForm()); reload(); } },
+  pSel(el) {
+    const set = new Set(ui.psel); if (el.checked) set.add(el.value); else set.delete(el.value); ui.psel = [...set];
+    el.closest('.pr')?.classList.toggle('sel', el.checked); const b = document.getElementById('pBulk'); if (b) b.innerHTML = bulkBarHtml();
+  },
+  pSelAll() { ui.psel = filterPeople({ ...ui.pf }).map(m => m.id); refreshPeople(); },
+  pSelNone() { ui.psel = []; refreshPeople(); },
+  async pBulkCat(el) {
+    if (!me.admin || !el.value || !ui.psel.length) return;
+    const cat = el.value; const ids = [...ui.psel]; el.disabled = true;
+    for (const part of chunks(ids)) if (!await q(sb.from('members').update({ category_id: cat }).in('id', part))) { el.disabled = false; return; }
+    ui.psel = []; reload(); toast(`${ids.length} → ${cats().find(c => c.id === cat)?.name || cat}`);
+  },
+  pExport() {
+    const sel = new Set(ui.psel); const list = filterPeople({ ...ui.pf }).filter(m => !sel.size || sel.has(m.id));
+    download(`servicesync-people-${T.todayIso}.csv`, toCsv(list));
+  },
+  openPerson(el) { ui.person = el.dataset.id; ui.prof = null; ui.tab = 'roster'; ui.psub = 'all'; render(); window.scrollTo(0, 0); loadProfile(ui.person); },
+  personBack() { ui.person = null; ui.prof = null; render(); },
+  personEdit(el) { if (!me.admin) return; modal(personForm(el.dataset.id || null)); },
+  pFamPick(el) { const w = document.getElementById('pFamNewWrap'); if (w) { w.hidden = el.value !== '__new'; if (!w.hidden) document.getElementById('pFamNew')?.focus(); } },
+  async personSave(el) {
+    const first = val('pFirst').trim().replace(/\s+/g, ' '), last = val('pLast').trim().replace(/\s+/g, ' ');
+    if (!first && !last) { toast(t('firstName')); return; }
+    const id = el.dataset.id; let familyId = val('pFam') || null;
+    const row = {
+      first_name: first || null, last_name: last || null, name: [first, last].filter(Boolean).join(' '),
+      phone: val('pPhone').trim() || null, email: val('pEmail').trim().toLowerCase() || null,
+      gender: val('pGender') || null, birthday: val('pBirthday') || null, address: val('pAddress').trim() || null, lang: val('pLang') || 'fr',
+      category_id: val('pCat') || 'congregation', family_role: val('pRole') || null,
+      sms_opt_out: !!document.getElementById('pSmsOut')?.checked, email_opt_out: !!document.getElementById('pEmailOut')?.checked,
+    };
+    const famNew = val('pFamNew').trim();
+    closeModal();
+    if (familyId === '__new') {
+      const f = await q(sb.from('families').insert({ name: famNew || (last ? last + (ui.lang === 'fr' ? '' : ' family') : row.name), address: row.address }).select('id').single());
+      if (!f) return; familyId = f.id;
+    }
+    row.family_id = familyId;
+    const saved = id ? await q(sb.from('members').update(row).eq('id', id).select('id').single()) : await q(sb.from('members').insert({ ...row, created_by: myPerson() }).select('id').single());
+    if (!saved) return;
+    reload(); toast(t('saved'));
+    if (!id && saved.id) { ui.person = saved.id; ui.prof = null; ui.psub = 'all'; loadProfile(saved.id); }
+    else if (ui.person) loadProfile(ui.person);
+  },
+  async personDel(el) { if (!tapTwice(el, t('tapAgain'))) return; closeModal(); if (await q(sb.from('members').delete().eq('id', el.dataset.id))) { ui.person = null; ui.prof = null; reload(); } },
+  async noteAdd(el) {
+    const box = document.getElementById('noteNew'); const body = (box?.value || '').trim(); if (!body) { box?.focus(); return; }
+    el.disabled = true;
+    if (await q(sb.from('person_notes').insert({ member_id: el.dataset.id, body }))) { if (box) box.value = ''; await loadProfile(el.dataset.id); }
+    el.disabled = false;
+  },
+  async noteDel(el) { if (!tapTwice(el, t('tapAgain'))) return; if (await q(sb.from('person_notes').delete().eq('id', el.dataset.id))) loadProfile(ui.person); },
+
+  /* categories (admins) */
+  catEdit() { if (!me.admin) return; ui.catDraft = cats(true).map(c => ({ id: c.id, name: c.name, nameFr: c.nameFr || '', hidden: c.active === false })); modal(categoryForm()); },
+  catMove(el) { syncCatDraft(); const i = +el.dataset.i; if (i > 0) { const d = ui.catDraft; [d[i - 1], d[i]] = [d[i], d[i - 1]]; } modal(categoryForm()); },
+  catAdd() { syncCatDraft(); const n = val('catNew').trim(); if (!n) return; ui.catDraft.push({ id: null, name: n, nameFr: '', hidden: false }); modal(categoryForm()); },
+  async catSave() {
+    syncCatDraft(); const d = ui.catDraft.filter(c => c.name.trim());
+    const old = d.map((c, i) => ({ c, i })).filter(x => x.c.id).map(({ c, i }) => ({ id: c.id, name: c.name.trim(), name_fr: c.nameFr.trim() || null, sort: i, active: !c.hidden }));
+    const add = d.map((c, i) => ({ c, i })).filter(x => !x.c.id).map(({ c, i }) => ({ name: c.name.trim(), name_fr: c.nameFr.trim() || null, sort: i, active: !c.hidden }));
+    closeModal();
+    if (old.length && !await q(sb.from('categories').upsert(old))) return;
+    if (add.length && !await q(sb.from('categories').insert(add))) return;
+    ui.catDraft = null; reload(); toast(t('saved'));
+  },
 
   /* events */
   evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
@@ -402,6 +520,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor']);
-export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick']);
+export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ']);
 export { TABS, ic };

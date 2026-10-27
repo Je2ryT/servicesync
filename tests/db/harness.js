@@ -25,6 +25,12 @@ export function migrationFiles(upTo = Infinity) {
   return readdirSync(join(ROOT, 'migrations')).filter(f => /^\d{3}-.*\.sql$/.test(f)).sort().filter(f => +f.slice(0, 3) <= upTo);
 }
 
+/** Apply one migration by number (e.g. 6). */
+export async function applyMigration(db, n) {
+  const f = migrationFiles().find(x => +x.slice(0, 3) === n);
+  await db.exec(readFileSync(join(ROOT, 'migrations', f), 'utf8'));
+}
+
 /** A fresh database with schema.sql and the migrations applied. */
 export async function freshDb({ upTo = Infinity } = {}) {
   const db = new PGlite();

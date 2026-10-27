@@ -49,7 +49,7 @@ function seed(admin = true) {
     },
   });
   me.admin = admin; me.email = admin ? 'boss@x.com' : 'anna@x.com'; me.name = '';
-  Object.assign(ui, { session: { user: {} }, ready: true, needsMigration: false, timerMissing: false, membersMissing: false, stage: null, ciSvc: null, ciQuery: '', evMonth: null, evDay: null });
+  Object.assign(ui, { session: { user: {} }, ready: true, needsMigration: false, timerMissing: false, membersMissing: false, peopleMissing: false, stage: null, ciSvc: null, ciQuery: '', evMonth: null, evDay: null });
   calls.length = 0;
 }
 const $ = s => document.querySelector(s);
@@ -115,15 +115,25 @@ describe('screens', () => {
   });
 
   it('adds a newcomer from a search with no match and checks them in', async () => {
-    seed(false); ui.tab = 'checkin'; ui.ciQuery = 'Patrick'; render();
-    click($('[data-act="addMember"][data-name="Patrick"]'));
-    expect($('#mName').value).toBe('Patrick');
-    $('#mName').value = '  Patrick   Tshivuadi '; $('#mPhone').value = '704 555 0123';
-    expect($('#mStatus option[selected]').value).toBe('newcomer');
-    $('#mStatus').value = 'newcomer';   // the test browser misreads pre-selected options; real browsers don't
+    seed(false); ui.tab = 'checkin'; ui.ciQuery = 'Patrick Ts'; render();
+    click($('[data-act="addMember"][data-name="Patrick Ts"]'));
+    expect([$('#mFirst').value, $('#mLast').value]).toEqual(['Patrick', 'Ts']);
+    $('#mFirst').value = '  Patrick '; $('#mLast').value = 'Tshivuadi'; $('#mPhone').value = '704 555 0123';
+    expect($('#mCat option[selected]').value).toBe('visitors');
+    $('#mCat').value = 'visitors';   // the test browser misreads pre-selected options; real browsers don't
     click($('[data-act="saveMember"]')); await flush(); await flush();
-    expect(calls[0]).toMatchObject({ table: 'members', op: 'insert', payload: { name: 'Patrick Tshivuadi', phone: '704 555 0123', status: 'newcomer' } });
+    expect(calls[0]).toMatchObject({ table: 'members', op: 'insert', payload: { name: 'Patrick Tshivuadi', first_name: 'Patrick', last_name: 'Tshivuadi', phone: '704 555 0123', category_id: 'visitors' } });
+    expect(calls[0].payload.status).toBeUndefined();
     expect(calls[1]).toMatchObject({ table: 'attendance', payload: { member_id: 'new-members', svc: 'en' } });
+  });
+
+  it('before migration 006 the form keeps the full name and status', async () => {
+    seed(false); ui.peopleMissing = true; ui.tab = 'checkin'; ui.ciQuery = 'Patrick'; render();
+    click($('[data-act="addMember"][data-name="Patrick"]'));
+    expect($('#mFirst')).toBeNull(); $('#mName').value = 'Patrick Tshivuadi'; $('#mStatus').value = 'newcomer';
+    click($('[data-act="saveMember"]')); await flush(); await flush();
+    expect(calls[0]).toMatchObject({ table: 'members', payload: { name: 'Patrick Tshivuadi', status: 'newcomer' } });
+    ui.peopleMissing = false;
   });
 
   it('only admins can edit members and events', () => {

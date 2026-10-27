@@ -21,14 +21,26 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 003 | `003-members-attendance-events.sql` | Members, check-in, events | |
 | 004 | `004-service-reports.sql` | Service reports | |
 | 005 | `005-activity-log.sql` | Activity log (who changed what) | Starts recording from the moment it runs; earlier changes aren't in the log. |
+| 006 | `006-people.sql` | Richer people: categories, families, notes timeline, profile fields, saved filters | Each status becomes a category (member/regular → Congregation, newcomer/visitor → Visitors) and the move is written to the category history; the old status column is kept. Notes move to the notes timeline. Everyone on the serving team gets a member record (Volunteers). Check-in keeps working before and after. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
+
+## People
+
+**People → Everyone** is the church directory (the serving team and teams & positions are the other two tabs).
+
+- **Filters:** search by name, phone or email; category, language, service attended, last attended (in the last 2 weeks / month / 3 months, not in the last month / 3 months, never), has a phone, has an email. **Save filter** keeps a combination (shared with the serving team, or just for you).
+- **Bulk:** tick people or **Select all shown**, then **Set category…** (admins) or **Export CSV**. The CSV opens in Excel and can be imported back.
+- **Profile:** tap a name for details (birthday and age, gender, address, language), family members, what they serve and their upcoming Sundays (if they're on the serving team), a **notes timeline**, attendance over the last 26 Sundays, and the **category history**.
+- **Categories** (admins): rename (English and French), reorder, hide, add. The starting list is Congregation, Volunteers, Visitors, Community Contacts, New Believers, Guest Speakers, Online Attendees.
+- **EN | FR** in the header switches the newer screens (People, profiles…) between English and French on that device.
+- Admins edit people; anyone on the serving team can read the directory and write notes.
 
 ## Dashboard, check-in and events
 
 - **Home** opens with the profile of whoever is signed in (next time serving, positions, contact), notifications (confirmations to answer, swap requests, coverage issues, newcomers, events this week), today's check-in numbers and upcoming events. Admins also see the planning overview below.
 - **Check-in**: pick the service (it picks English before 11:15 on Sundays, French after), search by name or phone, tap a name when someone arrives. Tap twice to undo. **New person** adds a newcomer and checks them in at once. Anyone on the roster can check people in; only admins edit or remove members.
-- **Import from Elvanto** (Check-in, admins): in Elvanto open **People → Export → CSV**, then choose that file. ServiceSync matches the columns (name, email, mobile, family, category), shows a preview, and skips anyone already here (same email, phone or name). Nothing is saved until you press Import.
+- **Import from Elvanto** (Check-in, admins): in Elvanto open **People → Export → CSV**, then choose that file. ServiceSync matches the columns (first/last name, email, mobile, gender, birthday, address, family and family relationship, category), creates the families, shows a preview, and skips anyone already here (same email, phone or name). Nothing is saved until you press Import.
 - **Events**: the church calendar by month, with Sundays marked. Admins add, edit and delete events.
 - After signing in, the Mont Carmel logo plays a short intro (once per browser tab; tap to skip).
 - The serving-team calendar tab is now called **Schedule**.

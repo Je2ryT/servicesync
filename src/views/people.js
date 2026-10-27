@@ -1,11 +1,13 @@
 import { S, T, ui, me } from '../state.js';
 import { esc, fmt, ym } from '../util.js';
+import { t } from '../i18n.js';
+import { vDirectory } from './directory.js';
 import { ic } from '../icons.js';
 import { people, activePeople, myPerson, loadFor, fairness, heavy, positionsOf, teamsList, allPositions, qualified } from '../domain.js';
 
 export function vPeople() {
-  const seg = `<div><div class="seg"><button data-act="psub" data-v="people" aria-pressed="${ui.psub !== 'teams'}">People</button><button data-act="psub" data-v="teams" aria-pressed="${ui.psub === 'teams'}">Teams &amp; positions</button></div></div>`;
-  return ui.psub === 'teams' ? vTeams(seg) : vRoster(seg);
+  const seg = `<div><div class="seg"><button data-act="psub" data-v="all" aria-pressed="${ui.psub === 'all'}">${esc(t('everyone'))}</button><button data-act="psub" data-v="people" aria-pressed="${ui.psub === 'people'}">${esc(t('servingTeam'))}</button><button data-act="psub" data-v="teams" aria-pressed="${ui.psub === 'teams'}">${esc(t('teamsPositions'))}</button></div></div>`;
+  return ui.psub === 'teams' ? vTeams(seg) : ui.psub === 'people' ? vRoster(seg) : vDirectory(seg);
 }
 
 function vRoster(seg) {
