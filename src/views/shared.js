@@ -2,9 +2,13 @@ import { T } from '../state.js';
 import { SVC } from '../config.js';
 import { esc, fmt, clock } from '../util.js';
 import { ic } from '../icons.js';
-import { docs, visible, svcKeys, svcName, cov, asgOf, status, pname, posName, fairness, heavy, tplFor, startOf, total } from '../domain.js';
+import { docs, visible, svcKeys, svcName, cov, asgOf, status, pname, posName, fairness, heavy, tplFor, startOf, endOf, total } from '../domain.js';
 
-export const timeRange = (doc, svc) => { const s = startOf(doc, svc); return `${clock(s)} – ${clock(s, total(tplFor(doc, svc)))}`; };
+export const timeRange = (doc, svc) => {
+  const s = startOf(doc, svc); const e = endOf(doc, svc);
+  if (e) return `${clock(s)} – ${clock(e)}${e <= s ? ' (+1 day)' : ''}`;   // an event ending after midnight
+  return `${clock(s)} – ${clock(s, total(tplFor(doc, svc)))}`;
+};
 
 export const stIcon = st => (st === 'confirmed' ? `<span class="s ok" title="Confirmed">${ic('checkc')}</span>`
   : st === 'declined' ? `<span class="s no" title="Declined">${ic('xc')}</span>`

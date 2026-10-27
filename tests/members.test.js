@@ -147,11 +147,11 @@ describe('screens', () => {
     const cell = $('[data-date="2026-11-04"]'); expect(cell.querySelector('.ev').textContent).toBe('Prayer night <b>');
     expect($('[data-date="2026-11-01"] .svc')).not.toBeNull();
     click($('.head [data-act="editEvent"]'));
-    $('#eTitle').value = 'Youth night'; $('#eDate').value = '2026-11-13'; $('#eStart').value = '19:00'; $('#eEnd').value = '18:00';
+    $('#eTitle').value = 'Youth night'; $('#eDate').value = '2026-11-13'; $('#eStart').value = '19:00'; $('#eEnd').value = '19:00';
     click($('[data-act="saveCalEvent"]')); await flush();
-    expect(calls.length).toBe(0);                                          // end before start is refused
-    $('#eEnd').value = '21:00'; click($('[data-act="saveCalEvent"]')); await flush();
-    expect(calls[0]).toMatchObject({ table: 'events', op: 'insert', payload: { title: 'Youth night', date: '2026-11-13', start_time: '19:00', end_time: '21:00' } });
+    expect(calls.length).toBe(0);                                          // an end time equal to the start is refused
+    $('#eEnd').value = '02:00'; click($('[data-act="saveCalEvent"]')); await flush();   // earlier than the start: ends the next day
+    expect(calls[0]).toMatchObject({ table: 'events', op: 'insert', payload: { title: 'Youth night', date: '2026-11-13', start_time: '19:00', end_time: '02:00' } });
   });
 
   it('asks for the database update when migration 003 has not run', () => {

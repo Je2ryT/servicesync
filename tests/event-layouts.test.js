@@ -112,14 +112,46 @@ describe('calendar ↔ layouts', () => {
     expect(S.tpl[tpl.id].name).toBe('Conference day');
   });
 
-  it('editing a linked event keeps its service in step; “No layout” unlinks it', async () => {
+  it('editing a linked event keeps its service in step; “No layout yet” keeps it on the Schedule without a layout', async () => {
     H.editEvent({ dataset: { id: 'e1' } }); expect($('input[name="evMode"]:checked').value).toBe('custom'); expect($('#evTpl').value).toBe('tpl-pr');
-    $('#eStart').value = '19:15'; await H.saveCalEvent({ dataset: { id: 'e1' } }); await flush();
-    expect(calls.find(c => c.saveSun)).toMatchObject({ saveSun: '2026-11-20-ev-a', d: { title: 'Prayer night', published: true, services: { ev: { start: '19:15', tpl: 'tpl-pr' } } } });
+    $('#eStart').value = '19:15'; $('#eEnd').value = '01:30'; await H.saveCalEvent({ dataset: { id: 'e1' } }); await flush();
+    expect(calls.find(c => c.saveSun)).toMatchObject({ saveSun: '2026-11-20-ev-a', d: { title: 'Prayer night', published: true, services: { ev: { start: '19:15', end: '01:30', tpl: 'tpl-pr' } } } });
     calls.length = 0;
     H.editEvent({ dataset: { id: 'e1' } }); pick('none'); await H.saveCalEvent({ dataset: { id: 'e1' } }); await flush();
-    expect(calls.some(c => c.saveSun)).toBe(false);
-    expect(calls.filter(c => c.table === 'events').map(c => c.payload.service_id)).toContain(null);
+    expect(calls.find(c => c.saveSun).d.services.ev.tpl).toBe('-');
+    expect(calls.some(c => c.table === 'events' && c.payload?.service_id === null)).toBe(false);
+  });
+
+  it('every new event goes on the Schedule, even without a layout; overnight end kept', async () => {
+    H.editEvent({ dataset: { date: '2026-11-13' } }); $('#eTitle').value = 'Night of worship'; $('#eStart').value = '19:00'; $('#eEnd').value = '02:00';
+    await H.saveCalEvent({ dataset: {} }); await flush();
+    expect(calls.find(c => c.saveSun).d).toMatchObject({ date: '2026-11-13', title: 'Night of worship', special: true, services: { ev: { start: '19:00', end: '02:00', tpl: '-' } } });
+    const { tplFor, docOf } = await import('../src/domain.js');
+    expect(tplFor({ services: { ev: { tpl: '-' } } }, 'ev').order).toEqual([]);
+    const { timeRange } = await import('../src/views/shared.js');
+    expect(timeRange({ services: { ev: { start: '19:00', end: '02:00' } } }, 'ev')).toBe('7:00 PM – 2:00 AM (+1 day)');
+    expect(docOf).toBeTruthy();
+  });
+
+  it('overnight events show “next day” and continue on the next day of the calendar', () => {
+    S.events.e3 = { title: 'Lock-in', date: '2026-11-13', start: '19:00', end: '02:00', location: '', description: '', serviceId: null }; render();
+    expect($('[data-date="2026-11-14"] .ev.cont').textContent).toBe('↳ Lock-in');
+    H.evDay({ dataset: { date: '2026-11-13' } });
+    expect($$('.evc').find(c => c.textContent.includes('Lock-in')).textContent).toContain('7:00 PM – 2:00 AM (next day)');
+  });
+
+  it('“Serving team” opens the event on the Schedule; deleting the event removes its Schedule entry', async () => {
+    H.evDay({ dataset: { date: '2026-11-20' } });
+    H.goSchedule($('[data-act="goSchedule"]')); expect(ui.tab).toBe('calendar'); expect(ui.month).toBe('2026-11');
+    expect($('#sun-2026-11-20-ev-a')).not.toBeNull();
+    H.editEvent({ dataset: { id: 'e1' } }); const del = $('[data-act="delCalEvent"]');
+    await H.delCalEvent(del); await H.delCalEvent(del); await flush();
+    expect(calls.filter(c => c.op === 'delete').map(c => [c.table, c.where])).toEqual([['sundays', ['id', '2026-11-20-ev-a']], ['events', ['id', 'e1']]]);
+  });
+
+  it('removing a special event on the Schedule removes its calendar entry', async () => {
+    await H.delEventYes({ dataset: { id: '2026-11-27-ev-b' } }); await flush();
+    expect(calls.filter(c => c.op === 'delete').map(c => [c.table, c.where])).toEqual([['events', ['service_id', '2026-11-27-ev-b']], ['sundays', ['id', '2026-11-27-ev-b']]]);
   });
 
   it('a Sunday service can switch to another layout for that day only', async () => {
@@ -144,5 +176,14 @@ describe('calendar ↔ layouts', () => {
     ui.tab = 'templates'; render();
     await H.tDel({ dataset: { tid: 'tpl-pr' } });
     expect(calls.some(c => c.table === 'templates' && c.op === 'delete')).toBe(false);
+  });
+
+  it('a special event added on the Schedule also goes on the calendar (with an overnight end)', async () => {
+    ui.tab = 'calendar'; ui.month = '2026-11'; render();
+    H.newEvent(); $('#evTitle').value = 'Watch night'; $('#evDate').value = '2026-12-31'; $('#evTime').value = '22:00'; $('#evEnd').value = '01:00';
+    await H.saveEvent(); await flush();
+    const svc = calls.find(c => c.saveSun);
+    expect(svc.d).toMatchObject({ date: '2026-12-31', title: 'Watch night', special: true, services: { ev: { start: '22:00', end: '01:00', tpl: '@en' } } });
+    expect(calls.find(c => c.table === 'events' && c.op === 'insert').payload).toMatchObject({ title: 'Watch night', date: '2026-12-31', start_time: '22:00', end_time: '01:00', service_id: svc.saveSun });
   });
 });

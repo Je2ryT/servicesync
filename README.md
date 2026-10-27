@@ -31,6 +31,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 013 | `013-volunteers-from-members.sql` | Add volunteers from the members list | A member added to the serving team is linked to their existing record instead of creating a second one. |
 | 014 | `014-hide-admin-list.sql` | Only full administrators see who the administrators are | Others see only their own access. |
 | 015 | `015-event-services.sql` | Calendar events linked to their service plan and printable layout | Until it runs, the calendar still links Sundays and special services to their layouts; only “Plan it as a service” waits for it. |
+| 016 | `016-events-on-schedule.sql` | Every calendar event is on the Schedule, and the other way round | Upcoming events get a draft Schedule entry; Schedule special events get a calendar entry. Deleting one deletes the other. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -104,11 +105,17 @@ Everyone in check-in and the People list is a member. To make one of them a volu
 
 The new serving-team card is linked to the member's record (attendance, notes, follow-ups stay together); it never creates a duplicate. Members already on the serving team are greyed out in the list, and their profile shows **On the serving team**. This needs the Schedule & teams area (or full access).
 
+### Events on the calendar and the Schedule
+
+Every event added on **Events** also appears on the **Schedule** (as a special event, in draft until the month is published), and every special event added on the Schedule appears on the calendar. Plan the serving team on the Schedule like any Sunday: press **Serving team** on the event (or on its layout) to jump there. Deleting the event in either place removes it from both.
+
+**After midnight:** an end time earlier than the start counts as the next day, so 7:00 PM – 2:00 AM is one event. It shows as "7:00 PM – 2:00 AM (next day)", and the calendar marks the next day with "↳ Night of worship".
+
 ### Choosing a layout
 
 Every event or service can use any layout (order of service):
 
-- **Events → Add event** (or edit one) has a **Layout** choice: **No layout** (just a calendar entry), **Sunday service layout**, **French service layout**, or **Custom layout**: pick one already built, or **Create a new layout** with a name, starting blank or as a copy of a Sunday layout. Picking a layout plans the event as a service (team, live timer, report, printable layout), kept on the Schedule.
+- **Events → Add event** (or edit one) has a **Layout** choice: **No layout yet** (still on the Schedule for its team), **Sunday service layout**, **French service layout**, or **Custom layout**: pick one already built, or **Create a new layout** with a name, starting blank or as a copy of a Sunday layout. Picking a layout plans the event as a service (team, live timer, report, printable layout), kept on the Schedule.
 - **Schedule → Special event** offers the same choice.
 - On any service's printable layout, **Layout: … · Change** switches that one service (for example a Sunday with a baptism) to another layout without changing the others; **Edit this layout** opens it on Templates.
 - "Sunday service layout" and "French service layout" follow whatever Templates sets for the English and French services, so updating those updates every event that uses them.

@@ -7,12 +7,12 @@ import { esc } from '../util.js';
 import { t } from '../i18n.js';
 import { templates, cfg } from '../domain.js';
 
-export const SUNDAY = '@en', FRENCH = '@fr';
+export const SUNDAY = '@en', FRENCH = '@fr', NONE = '-';   // NONE: on the Schedule, no layout yet
 /** The template a stored choice points to ('@en' → the English Sunday layout, etc.). */
 export const resolveTpl = id => (id === SUNDAY ? cfg().enTpl : id === FRENCH ? cfg().frTpl : id);
 /** Which radio a stored choice shows as. */
 export function modeOf(id, { allowNone = false } = {}) {
-  if (!id) return allowNone ? 'none' : 'en';
+  if (!id || id === NONE) return allowNone ? 'none' : 'en';
   if (id === SUNDAY) return 'en';
   if (id === FRENCH) return 'fr';
   return 'custom';
@@ -67,6 +67,6 @@ export function newLayoutItems(from) {
 export const pickerError = c => (c.mode === 'custom' && c.tpl === '__new' && !c.newName ? 'lpNeedName' : '');
 
 /** Stored value for a reading, once any new layout exists: '' (none), '@en', '@fr' or a template id. */
-export const storedValue = (c, newId) => (c.mode === 'none' ? '' : c.mode === 'en' ? SUNDAY : c.mode === 'fr' ? FRENCH : c.tpl === '__new' ? newId : c.tpl);
+export const storedValue = (c, newId) => (c.mode === 'none' ? NONE : c.mode === 'en' ? SUNDAY : c.mode === 'fr' ? FRENCH : c.tpl === '__new' ? newId : c.tpl);
 export const langOfNew = from => (from === FRENCH ? 'fr' : 'en');
 export const templateExists = id => !!S.tpl[id] || !!templates()[id];

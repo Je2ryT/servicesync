@@ -9,7 +9,11 @@ import { docs, docOf, visible, svcKeys, svcName, startOf, templates, tplFor } fr
 import { t } from '../i18n.js';
 import { layoutPicker } from './layoutpick.js';
 
-const timeText = e => (e.start ? clock(e.start) + (e.end ? ' – ' + clock(e.end) : '') : 'All day');
+/** "7:00 PM – 2:00 AM (next day)": an end time earlier than the start is the next day. */
+export const crossesMidnight = e => !!(e.start && e.end && e.end <= e.start);
+const timeText = e => (e.start ? clock(e.start) + (e.end ? ' – ' + clock(e.end) + (crossesMidnight(e) ? ' (' + t('nextDay') + ')' : '') : '') : 'All day');
+/** Events that started the day before and run past midnight into this date. */
+const spillInto = date => { const p = new Date(date + 'T12:00:00'); p.setDate(p.getDate() - 1); const prev = iso(p); return eventsOn(prev).filter(crossesMidnight); };
 
 /* ---------- services on the calendar (Sundays and special events from the schedule) ---------- */
 const linkedServices = () => new Set(Object.values(S.events).map(e => e.serviceId).filter(Boolean));
@@ -23,7 +27,7 @@ export function servicesOn(date) {
 const upcomingSpecials = from => { const linked = linkedServices(); return docs().filter(d => d.special && d.date >= from && visible(d) && !linked.has(d.id)).map(d => ({ kind: 'svc', doc: d, svc: 'ev', date: d.date, title: svcName(d, 'ev'), start: startOf(d, 'ev') })); };
 
 /** Buttons that open a service's layout and live view. */
-export const serviceLinks = (doc, svc) => `<div class="ev-links"><button class="btn sm" data-act="openLayout" data-id="${esc(doc.id)}" data-svc="${svc}">${ic('list')} ${esc(t('serviceLayout'))}</button>
+export const serviceLinks = (doc, svc) => `<div class="ev-links">${svc === 'ev' && can('schedule') ? `<button class="btn sm" data-act="goSchedule" data-id="${esc(doc.id)}">${ic('users')} ${esc(t('servingTeamBtn'))}</button>` : ''}<button class="btn sm" data-act="openLayout" data-id="${esc(doc.id)}" data-svc="${svc}">${ic('list')} ${esc(t('serviceLayout'))}</button>
   <button class="btn sm ghost" data-act="openLive" data-id="${esc(doc.id)}" data-svc="${svc}">${ic('live')} Live</button></div>`;
 
 function svcCard(x) {
@@ -50,7 +54,7 @@ export function vEvents() {
     const evs = [...eventsOn(d), ...servicesOn(d).filter(x => x.doc.special)]; const inMonth = d.startsWith(m); const sun = parse(d).getDay() === 0;
     return `<button class="cal-d ${inMonth ? '' : 'out'} ${d === T.todayIso ? 'today' : ''} ${d === sel ? 'sel' : ''}" data-act="evDay" data-date="${d}" aria-label="${esc(fmt(d, { weekday: 'long', month: 'long', day: 'numeric' }))}${evs.length ? ', ' + evs.length + ' event' + (evs.length === 1 ? '' : 's') : ''}">
       <span class="n">${parse(d).getDate()}</span>${sun && inMonth ? '<span class="svc">Services</span>' : ''}
-      ${evs.slice(0, 2).map(e => `<span class="ev">${esc(e.title)}</span>`).join('')}${evs.length > 2 ? `<span class="more">+${evs.length - 2}</span>` : ''}</button>`;
+      ${spillInto(d).map(e => `<span class="ev cont" title="${esc(t('continuesFrom'))}">↳ ${esc(e.title)}</span>`).join('')}${evs.slice(0, 2).map(e => `<span class="ev">${esc(e.title)}</span>`).join('')}${evs.length > 2 ? `<span class="more">+${evs.length - 2}</span>` : ''}</button>`;
   }).join('');
   const from = m === ym(T.now) ? T.todayIso : m + '-01';
   const byTime = (a, b) => a.date.localeCompare(b.date) || (a.start || '').localeCompare(b.start || '');
@@ -70,7 +74,7 @@ export function vEvents() {
 function planBox(e) {
   const doc = e.serviceId && docOf(e.serviceId);
   return `<div class="plan-box">${layoutPicker('ev', doc ? doc.services?.ev?.tpl || '' : '', { allowNone: true, newName: e.title })}
-    ${doc ? `<p class="sub" style="margin:0">${esc(t('planLinked'))}</p>` : `<p class="sub" style="margin:0">${esc(t('planAsServiceHelp'))}</p>`}</div>`;
+    <p class="sub" style="margin:0">${esc(t(doc ? 'planLinked' : 'planAsServiceHelp'))}</p></div>`;
 }
 
 export function eventForm(id, date) {
@@ -79,6 +83,7 @@ export function eventForm(id, date) {
     <label class="f">Title<input type="text" id="eTitle" value="${esc(e.title)}" placeholder="Prayer night, youth meeting…"></label>
     <div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f" style="flex:1.4">Date<input type="date" id="eDate" value="${esc(e.date)}"></label>
       <label class="f" style="flex:1">Starts<input type="time" id="eStart" value="${esc(e.start)}"></label><label class="f" style="flex:1">Ends<input type="time" id="eEnd" value="${esc(e.end)}"></label></div>
+    <p class="sub" style="margin:0">${esc(t('overnightHint'))}</p>
     <label class="f">Location<input type="text" id="eLoc" value="${esc(e.location)}"></label>
     <label class="f">Details<textarea id="eDesc" rows="3">${esc(e.description)}</textarea></label>
     ${ui.eventLinkMissing ? '' : planBox(e)}
