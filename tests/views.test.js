@@ -59,6 +59,18 @@ describe('every screen renders', () => {
     expect(html).toContain('data-act="assign"');
   });
 
+  it('the schedule hides past dates; a link shows them again', async () => {
+    const { H } = await import('../src/actions.js');
+    me.admin = true; me.email = 'jerry@x.com'; ui.tab = 'calendar'; ui.month = '2026-10'; ui.showPast = false; render();   // today is Mon Oct 26
+    const days = () => [...document.querySelectorAll('.card.sun h2')].map(h => h.textContent);
+    expect(days()).toEqual([]);   // Oct 4, 11, 18, 25 have all passed
+    expect(document.querySelector('.past-bar').textContent).toContain('4 past dates hidden');
+    expect(document.getElementById('main').textContent).toContain('Every date in this month has passed.');
+    H.togglePast(); expect(days()).toEqual(['Sunday, October 4', 'Sunday, October 11', 'Sunday, October 18', 'Sunday, October 25']);
+    H.month({ dataset: { k: '1' } }); expect(ui.showPast).toBe(false);
+    expect(days()[0]).toBe('Sunday, November 1'); expect(document.querySelector('.past-bar')).toBeNull();
+  });
+
   it('volunteers do not see draft months or other people’s assign menus', () => {
     me.admin = false; me.email = 'bob@x.com'; ui.tab = 'calendar'; render();
     const html = document.getElementById('main').innerHTML;
