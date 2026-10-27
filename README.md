@@ -24,6 +24,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 006 | `006-people.sql` | Richer people: categories, families, notes timeline, profile fields, saved filters | Each status becomes a category (member/regular → Congregation, newcomer/visitor → Visitors) and the move is written to the category history; the old status column is kept. Notes move to the notes timeline. Everyone on the serving team gets a member record (Volunteers). Check-in keeps working before and after. |
 | 007 | `007-messaging.sql` | Email and text messages: message log, recipients, opt-out history | Sending also needs the Vercel settings below. |
 | 008 | `008-followups.sql` | Follow-up flows (Newcomer flow with four steps), board, weekly reminder | From now on, new Visitors join the Newcomer flow automatically. People already in Visitors aren't added; use *Add to a follow-up* for them. The weekly email also needs `CRON_SECRET` below. |
+| 009 | `009-reports.sql` | Attendance & people reports, weekly report emails | Reports read what's already there, so they include history from before 009. Weekly emails need the messaging settings and `CRON_SECRET`. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -68,11 +69,29 @@ The **Follow-ups** tab shows one board per flow, with a column for each step. Th
 - Anyone added through check-in, or moved into the *Visitors* category, joins the Newcomer flow. Imports don't, unless you tick *Add new Visitors to the Newcomer follow-up* on the import screen.
 - **Mark done** writes a line on the person's notes timeline and moves them to the next step (with that step's default person, if it has one). After the last step the follow-up is finished.
 - Home shows *My follow-ups*, overdue first; the bell counts overdue ones.
-- Every Monday at 8 a.m. (Eastern, 12:00 UTC) each person with follow-ups due that week gets one email listing them. It needs the messaging settings above plus:
+- Every Monday morning (12:00 UTC, which is 8 a.m. Eastern in summer and 7 a.m. in winter), each person with follow-ups due that week gets one email listing them. It needs the messaging settings above plus:
 
 | Variable | What it is |
 |---|---|
 | `CRON_SECRET` | Any long random text. Vercel sends it to `/api/cron` so nobody else can trigger the emails |
+
+## Attendance & people reports
+
+**Reports → Attendance & people** has these reports. Each one downloads as CSV (it opens in Excel) and works in English and French:
+
+| Report | What it shows |
+|---|---|
+| Absentees | People who came at least *N* times, then missed the last *N* weeks. Tick people to text or email them, or add them to a follow-up |
+| Attendance | Charts and tables by service, category and month, with first visits |
+| One person's attendance | Every Sunday someone came, for the period you choose |
+| People activity | New people, category changes, notes, finished follow-ups and opt-outs |
+| No notes lately | People nobody has written a note about in *N* days |
+| Category changes | Who moved between categories, when and by whom |
+| Volunteer positions | Who served in which position, how often, and how many times they confirmed or declined |
+| Text message log | Every text with its delivery status. Team members see only their own |
+| Unsubscribes | Opt-outs and opt-ins by email and text (administrators only) |
+
+Team members see the same people and attendance they can already see in the app. Administrators can also choose **Email weekly** on a report: pick the weekday, the language and up to 20 addresses. The cron job runs every day at 12:00 UTC and sends the reports that are due that weekday. Each email has the first 50 rows and the full CSV attached, and it's logged under Sent messages.
 
 ## Dashboard, check-in and events
 

@@ -3,7 +3,7 @@ import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
 import { ic } from './icons.js';
-import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity, loadProfile, loadMessages, loadRecipients, sendMessage } from './data.js';
+import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity, loadProfile, loadMessages, loadRecipients, sendMessage, loadSchedules } from './data.js';
 import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
@@ -28,6 +28,8 @@ import { stepsOf } from './flows.js';
 import { parseCsv, detectColumns, memberRows, newFamilies } from './importer.js';
 import { fold } from './members.js';
 import { timeRange } from './views/shared.js';
+import { reportDef, reportCsv, csvName } from './reportdefs.js';
+import { keyOf, ctx as rptCtx, flowPickForm, scheduleForm, parseEmails } from './views/rpt.js';
 
 /* ---------- helpers ---------- */
 function shareText() {
@@ -422,9 +424,35 @@ export const H = {
     ui.catDraft = null; reload(); toast(t('saved'));
   },
 
+  /* attendance & people reports (009) */
+  rptOpen(el) { ui.rpt.open = el.dataset.id; ui.rpt.sel = []; render(); window.scrollTo(0, 0); },
+  rptBack() { ui.rpt.open = null; ui.rpt.sel = []; render(); },
+  rptParam(el) { const id = ui.rpt.open; if (!id) return; const p = ui.rpt.params[id] || (ui.rpt.params[id] = { ...reportDef(id).params }); p[el.dataset.k] = el.value; render(); },
+  rptRefresh() { const id = ui.rpt.open; if (id) { delete ui.rpt.cache[keyOf(id)]; render(); } },
+  rptCsv() { const id = ui.rpt.open; const rows = ui.rpt.cache[keyOf(id)]?.rows; if (rows) download(csvName(reportDef(id), T.todayIso), reportCsv(reportDef(id), rows, rptCtx())); },
+  rptSel(el) { const s = new Set(ui.rpt.sel); el.checked ? s.add(el.dataset.id) : s.delete(el.dataset.id); ui.rpt.sel = [...s]; render(); },
+  rptSelAll(el) { const rows = ui.rpt.cache[keyOf(ui.rpt.open)]?.rows || []; ui.rpt.sel = el.checked ? rows.map(r => r.member_id) : []; render(); },
+  rptFlow() { if (ui.rpt.sel.length) modal(flowPickForm()); },
+  async rptFlowGo() {
+    const flow = val('rptFlowId'); const ids = [...ui.rpt.sel]; if (!flow || !ids.length) return; closeModal();
+    let n = 0; for (const id of ids) if (await q(sb.rpc('flow_enroll', { p_member: id, p_flow: flow }))) n++;
+    ui.rpt.sel = []; reload(); toast(t('addedToFlowN', { n }));
+  },
+  rschNew() { if (me.admin && ui.rpt.open) modal(scheduleForm(ui.rpt.open)); },
+  async rschSave(el) {
+    const { ok, bad } = parseEmails(val('rsTo')); const err = document.getElementById('rsErr');
+    if (bad.length || !ok.length) { if (err) err.textContent = t('badEmails', { list: bad.join(', ') || '—' }); return; }
+    if (ok.length > 20) { if (err) err.textContent = t('badEmails', { list: ok.slice(20).join(', ') }); return; }
+    const id = el.dataset.id; const row = { report: id, params: { ...(ui.rpt.params[id] || reportDef(id).params) }, recipients: ok, weekday: +val('rsDay'), lang: val('rsLang') === 'fr' ? 'fr' : 'en' };
+    closeModal(); if (await q(sb.from('report_schedules').insert(row))) { ui.rpt.sched.loaded = false; toast(t('saved')); loadSchedules(); }
+  },
+  async rschToggle(el) { const x = ui.rpt.sched.rows.find(r => r.id === el.dataset.id); if (x && await q(sb.from('report_schedules').update({ active: !x.active }).eq('id', x.id))) loadSchedules(); },
+  async rschDel(el) { if (await q(sb.from('report_schedules').delete().eq('id', el.dataset.id))) loadSchedules(); },
+
   /* messaging */
   contact(el) {
     const d = el.dataset; const src = { kind: d.src };
+    if (d.src === 'report') { src.kind = 'selection'; src.ids = [...ui.rpt.sel]; }
     if (d.src === 'selection') src.ids = [...ui.psel];
     if (d.src === 'filter') src.filters = { ...ui.pf };
     if (d.src === 'person') src.id = d.id;
@@ -613,6 +641,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll']);
 export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
 export { TABS, ic };

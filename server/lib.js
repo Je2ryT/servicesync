@@ -86,6 +86,18 @@ export async function resendBatch(emails, idempotencyKey, { env = process.env, f
   return { ok: true, ids: (j.data || []).map(x => x.id) };
 }
 
+/** One email (the batch endpoint can't carry attachments). */
+export async function resendEmail(email, idempotencyKey, { env = process.env, fetch = globalThis.fetch } = {}) {
+  if (!env.RESEND_API_KEY || !env.MAIL_FROM) throw httpError(500, 'Email is not set up yet (RESEND_API_KEY, MAIL_FROM in Vercel).');
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST', body: JSON.stringify({ from: env.MAIL_FROM, ...email }),
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) return { ok: false, error: j.message || `Resend error ${r.status}` };
+  return { ok: true, ids: [j.id] };
+}
+
 /* ---------- small things ---------- */
 export const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
