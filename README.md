@@ -28,6 +28,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 010 | `010-admins.sql` | Manage administrators in the app (People → Administrators) | Emails are stored lower-case, the last administrator can't be removed, and changes go in the activity log. |
 | 011 | `011-service-layout.sql` | Printable service layout: names typed for one service | Placeholders themselves live in the templates, so the layout shows and prints before 011; typing a name needs 011. |
 | 012 | `012-admin-permissions.sql` | Different access for each administrator (including Live service for the timer) | Everyone who is an administrator today keeps full access; narrow it on People → Administrators afterwards. |
+| 013 | `013-volunteers-from-members.sql` | Add volunteers from the members list | A member added to the serving team is linked to their existing record instead of creating a second one. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -90,6 +91,16 @@ Print the order of service before every service, with who leads each part.
 3. Press **Print**. The sheet has the church logo, the date and times, a Notes area, and prints in colour. French services print in French.
 
 Administrators can fill in any service; people on the roster can fill in published Sundays (the same rule as service reports).
+
+## Adding volunteers from the members list
+
+Everyone in check-in and the People list is a member. To make one of them a volunteer:
+
+- **People → Serving team → Add person**: type a few letters of their name or phone under **Pick from the members list** and pick them. Name, phone, email and language fill in; add a sign-in email if they don't have one, tick their positions, and **Save**.
+- Or open the member's profile (**People → Everyone**) and press **Add to serving team**.
+- Or, editing a position on **Teams & positions**, press **Add someone from the members list**; that position comes pre-ticked.
+
+The new serving-team card is linked to the member's record (attendance, notes, follow-ups stay together); it never creates a duplicate. Members already on the serving team are greyed out in the list, and their profile shows **On the serving team**. This needs the Schedule & teams area (or full access).
 
 ## Attendance & people reports
 

@@ -26,7 +26,7 @@ import { msgState } from './views/messages.js';
 import { doneForm, addForm, flowForm } from './views/followups.js';
 import { stepsOf } from './flows.js';
 import { parseCsv, detectColumns, memberRows, newFamilies } from './importer.js';
-import { fold } from './members.js';
+import { fold, searchMembers } from './members.js';
 import { timeRange } from './views/shared.js';
 import { reportDef, reportCsv, csvName } from './reportdefs.js';
 import { removeForm, accessForm } from './views/admins.js';
@@ -49,6 +49,21 @@ function shareText() {
     }
   }
   lines.push('', location.origin); return lines.join('\n');
+}
+/* Picking a volunteer from the members list (People → Add person, a member's profile, a position). */
+function volunteerPicker(memberId) {
+  return `<div class="vpick"><label class="f">${esc(t('fromMembers'))}<input type="search" id="cFind" class="draft" data-act="cFind" placeholder="${esc(t('searchMembersPh'))}" autocomplete="off"></label>
+    <div id="cFindRes" class="vpick-res"></div><input type="hidden" id="cFrom" value="${esc(memberId || '')}"><div id="cFromChip">${memberId ? linkedChip(memberId) : ''}</div></div>`;
+}
+function volunteerMatches(text) {
+  if (!String(text || '').trim()) return '';
+  const list = searchMembers(text).slice(0, 6);
+  if (!list.length) return `<p class="sub" style="margin:0">${esc(t('noMemberMatch'))}</p>`;
+  return list.map(m => `<button class="vpick-item" data-act="pickMember" data-id="${esc(m.id)}" ${m.coordinatorId ? 'disabled' : ''}><b>${esc(m.name)}</b><small>${esc([m.phone, m.email].filter(Boolean).join(' · ') || '—')}${m.coordinatorId ? ' · ' + esc(t('alreadyServing')) : ''}</small></button>`).join('');
+}
+function linkedChip(memberId) {
+  const m = S.members[memberId]; if (!m) return '';
+  return `<div class="vpick-chip">${ic('users')} <span>${esc(t('linkedTo', { name: m.name }))}</span><button class="btn link" data-act="unpickMember">${esc(t('unlink'))}</button></div>`;
 }
 function draftOf(tid) { if (!ui.drafts[tid]) ui.drafts[tid] = structuredClone(templates()[tid]); return ui.drafts[tid]; }
 /** Copy the placeholder editor's fields back into ui.phDraft (before re-drawing it). */
@@ -230,24 +245,45 @@ export const H = {
   psub(el) { ui.psub = el.dataset.v; ui.person = null; ui.prof = null; render(); },
   editPerson(el) {
     const id = el.dataset.id; const adm = can('schedule');
-    const t = id ? S.people[id] : { name: '', email: '', phone: '', langs: { en: true, fr: true }, active: true, max: 4 };
+    const mem = !id && el.dataset.member ? S.members[el.dataset.member] : null;   // "Add to serving team" from a member's profile
+    const t = id ? S.people[id] : mem ? { name: mem.name, email: mem.email || '', phone: mem.phone || '', langs: { en: mem.lang !== 'fr', fr: mem.lang !== 'en' }, active: true, max: 4 }
+      : { name: '', email: '', phone: '', langs: { en: true, fr: true }, active: true, max: 4 };
+    const prePos = el.dataset.pos || '';
+    const picker = !id && adm && !ui.peopleMissing ? volunteerPicker(mem ? el.dataset.member : '') : '';
     const days = [...sundaysOf(ym(T.now)), ...sundaysOf(shiftMonth(ym(T.now), 1)), ...sundaysOf(shiftMonth(ym(T.now), 2))].filter(d => d >= T.todayIso);
     const groups = teamsList().map(tm => [tm, allPositions().filter(p => p.team === tm.id)]).filter(([, ps]) => ps.length);
-    modal(`<h2>${id ? esc(t.name) : 'Add person'}</h2>${adm ? `<label class="f">Name<input type="text" id="cName" value="${esc(t.name)}"></label><label class="f">Sign-in email<input type="email" id="cEmail" value="${esc(t.email || '')}" placeholder="name@gmail.com"></label><label class="f">Phone<input type="tel" id="cPhone" value="${esc(t.phone || '')}" placeholder="+1 704 555 0100"></label>
+    modal(`<h2>${id ? esc(t.name) : 'Add person'}</h2>${picker}${adm ? `<label class="f">Name<input type="text" id="cName" value="${esc(t.name)}"></label><label class="f">Sign-in email<input type="email" id="cEmail" value="${esc(t.email || '')}" placeholder="name@gmail.com"></label><label class="f">Phone<input type="tel" id="cPhone" value="${esc(t.phone || '')}" placeholder="+1 704 555 0100"></label>
       <div class="checks"><label><input type="checkbox" id="cEn" ${t.langs?.en !== false ? 'checked' : ''}> English service</label><label><input type="checkbox" id="cFr" ${t.langs?.fr !== false ? 'checked' : ''}> French service</label><label><input type="checkbox" id="cAct" ${t.active !== false ? 'checked' : ''}> Active</label></div>
-      <div class="f" style="font-size:.85rem;font-weight:600;display:grid;gap:8px">Can serve as${groups.length ? groups.map(([tm, ps]) => `<div class="pgroup"><span>${esc(tm.name)}</span><div class="checks">${ps.map(p => `<label><input type="checkbox" class="cPos" value="${esc(p.id)}" ${id && qualified(id, p.id) ? 'checked' : ''}> ${esc(p.name)}</label>`).join('')}</div></div>`).join('') : '<span class="sub" style="margin:0;font-weight:400">Create teams and positions first.</span>'}</div>
+      <div class="f" style="font-size:.85rem;font-weight:600;display:grid;gap:8px">Can serve as${groups.length ? groups.map(([tm, ps]) => `<div class="pgroup"><span>${esc(tm.name)}</span><div class="checks">${ps.map(p => `<label><input type="checkbox" class="cPos" value="${esc(p.id)}" ${(id && qualified(id, p.id)) || p.id === prePos ? 'checked' : ''}> ${esc(p.name)}</label>`).join('')}</div></div>`).join('') : '<span class="sub" style="margin:0;font-weight:400">Create teams and positions first.</span>'}</div>
       <label class="f">Max assignments per month<input type="number" id="cMax" min="1" max="20" value="${esc(t.max || 4)}" style="width:100px"></label>` : ''}
       ${id ? `<div class="f" style="font-size:.85rem;font-weight:600;display:grid;gap:8px">Sundays off<div class="offs">${days.map(d => `<button data-act="dayoff" data-id="${esc(id)}" data-date="${d}" aria-pressed="${isOff(id, d)}">${esc(fmt(d, { month: 'short', day: 'numeric' }))}</button>`).join('')}</div></div>` : ''}
       <div class="row" style="justify-content:space-between">${adm ? `<div class="row"><button class="btn cta" data-act="savePerson" data-id="${esc(id || '')}">Save</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>${id ? `<button class="btn danger" data-act="delPerson" data-id="${esc(id)}">Remove</button>` : ''}` : '<button class="btn" data-act="closeModal">Done</button>'}</div>`);
   },
+  cFind(el) { const r = document.getElementById('cFindRes'); if (r) r.innerHTML = volunteerMatches(el.value); },
+  pickMember(el) {
+    const m = S.members[el.dataset.id]; if (!m) return;
+    const set = (id, v) => { const x = document.getElementById(id); if (x) x.value = v || ''; };
+    set('cName', m.name); set('cEmail', m.email); set('cPhone', m.phone); set('cFrom', el.dataset.id); set('cFind', '');
+    const en = document.getElementById('cEn'), fr = document.getElementById('cFr'); if (en && fr) { en.checked = m.lang !== 'fr'; fr.checked = m.lang !== 'en'; }
+    document.getElementById('cFindRes').innerHTML = ''; document.getElementById('cFromChip').innerHTML = linkedChip(el.dataset.id);
+    document.getElementById(m.email ? 'cPhone' : 'cEmail')?.focus();
+  },
+  unpickMember() { const f = document.getElementById('cFrom'); if (f) f.value = ''; document.getElementById('cFromChip').innerHTML = ''; },
   async savePerson(el) {
     const name = val('cName').trim(); if (!name) { toast('Enter a name.'); return; }
     const email = val('cEmail').trim().toLowerCase() || null;
     const row = { name, email, phone: val('cPhone').trim(), lang_en: document.getElementById('cEn').checked, lang_fr: document.getElementById('cFr').checked, active: document.getElementById('cAct').checked, max_per_month: Math.max(1, Math.min(20, +val('cMax') || 4)) };
     if (el.dataset.id) row.id = el.dataset.id;
     const picked = [...document.querySelectorAll('.cPos:checked')].map(x => x.value);
+    const from = !el.dataset.id ? document.getElementById('cFrom')?.value || '' : '';   // read before the form closes
     closeModal();
-    const saved = await q(sb.from('coordinators').upsert(row).select('id').single()); if (!saved) return;
+    let saved;
+    if (from) {
+      const r = await sb.from('coordinators').upsert({ ...row, from_member: from }).select('id').single();
+      if (r.error && /from_member/.test(r.error.message)) saved = await q(sb.from('coordinators').upsert(row).select('id').single());   // migration 013 not run yet
+      else if (r.error) { toast(r.error.message); return; } else saved = r.data;
+    } else saved = await q(sb.from('coordinators').upsert(row).select('id').single());
+    if (!saved) return;
     const pid = saved.id;
     const drop = Object.keys(S.quals[pid] || {}).filter(p => !picked.includes(p));
     if (drop.length) await q(sb.from('person_positions').delete().eq('person_id', pid).in('position_id', drop));
@@ -649,7 +685,7 @@ export const H = {
       <label class="f">Team<select id="psTeam">${teamsList().map(t => `<option value="${esc(t.id)}" ${t.id === p.team ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select></label>
       <div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f">Minimum per service<input type="number" id="psMin" min="0" max="20" value="${esc(p.min)}"></label><label class="f">Preferred per service<input type="number" id="psPref" min="1" max="20" value="${esc(p.pref)}"></label></div>
       <div class="checks"><label><input type="checkbox" id="psAct" ${p.active !== false ? 'checked' : ''}> Schedule this position (uncheck to pause it)</label></div>
-      <div class="f" style="font-size:.85rem;font-weight:600;display:grid;gap:8px">Who can serve${people().length ? `<div class="checks">${people().map(x => `<label><input type="checkbox" class="psWho" value="${esc(x.id)}" ${id && qualified(x.id, id) ? 'checked' : ''}> ${esc(x.name)}</label>`).join('')}</div>` : '<span class="sub" style="margin:0;font-weight:400">Add people first, then tick them here.</span>'}</div>
+      <div class="f" style="font-size:.85rem;font-weight:600;display:grid;gap:8px">Who can serve${people().length ? `<div class="checks">${people().map(x => `<label><input type="checkbox" class="psWho" value="${esc(x.id)}" ${id && qualified(x.id, id) ? 'checked' : ''}> ${esc(x.name)}</label>`).join('')}</div>` : '<span class="sub" style="margin:0;font-weight:400">Add people first, then tick them here.</span>'}${id && !ui.peopleMissing ? `<button class="btn link" style="justify-self:start" data-act="editPerson" data-pos="${esc(id)}">${ic('plus')} ${esc(t('addFromMembers'))}</button>` : ''}</div>
       <div class="row" style="justify-content:space-between"><div class="row"><button class="btn cta" data-act="savePosition" data-id="${esc(id || '')}">Save</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>${id ? `<button class="btn danger" data-act="delPosition" data-id="${esc(id)}">Delete</button>` : ''}</div>`);
   },
   async savePosition(el) {
@@ -719,5 +755,5 @@ export const H = {
 
 /* Actions fired by `change` or `input` instead of `click`. */
 export const CHANGE = new Set(['accFull', 'assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor', 'pf', 'pfLoad', 'pSel', 'pBulkCat', 'pFamPick', 'cmpChannel', 'fuMine', 'fuAssign', 'fuDue', 'rptParam', 'rptSel', 'rptSelAll', 'layName', 'phRole']);
-export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
+export const INPUT = new Set(['cFind', 'tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText', 'pfQ', 'cmpSubject', 'cmpBody']);
 export { TABS, ic };

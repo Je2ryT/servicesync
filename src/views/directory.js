@@ -76,7 +76,7 @@ function vProfile(id) {
   const weeks = attendanceStrip(p?.att || []);
   return `<div class="head prof-head"><div><button class="btn link noprint" data-act="personBack">${ic('left')} ${esc(t('back'))}</button>
       <div class="row" style="gap:14px;flex-wrap:nowrap"><div class="avatar sm" aria-hidden="true">${esc(initials(m))}</div><div><h1>${esc(m.name)}</h1><div class="row">${catPill(m)}${famName ? `<span class="pill mute">${esc(famName.toUpperCase())}</span>` : ''}${m.smsOptOut ? `<span class="pill warn">${esc(t('smsOptOut'))}</span>` : ''}${m.emailOptOut ? `<span class="pill warn">${esc(t('emailOptOut'))}</span>` : ''}</div></div></div></div>
-      <div class="row"><button class="btn" data-act="contact" data-src="person" data-id="${esc(id)}" data-label="${esc(m.name)}">${ic('send')} ${esc(t('contact'))}</button>${can('people') ? `<button class="btn" data-act="personEdit" data-id="${esc(id)}">${ic('pencil')} ${esc(t('edit'))}</button>` : ''}</div></div>
+      <div class="row"><button class="btn" data-act="contact" data-src="person" data-id="${esc(id)}" data-label="${esc(m.name)}">${ic('send')} ${esc(t('contact'))}</button>${can('people') ? `<button class="btn" data-act="personEdit" data-id="${esc(id)}">${ic('pencil')} ${esc(t('edit'))}</button>` : ''}${m.coordinatorId && S.people[m.coordinatorId] ? `<span class="pill role">${esc(t('onServingTeam'))}</span>` : can('schedule') ? `<button class="btn" data-act="editPerson" data-member="${esc(id)}">${ic('plus')} ${esc(t('addToServing'))}</button>` : ''}</div></div>
     <div class="prof-grid">
       <div class="prof-col">
         <section class="card"><div class="ch"><h3>${esc(t('details'))}</h3></div><div class="kv">

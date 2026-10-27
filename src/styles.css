@@ -835,3 +835,17 @@ ul.ro .ph-line{padding:4px 0 2px}
 .rm-qr svg{width:220px;height:220px;background:#fff;border-radius:12px}
 .rm-link{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
 .rm-link input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:.85rem;color:var(--muted);min-width:0}
+
+/* ---------- pick a volunteer from the members list ---------- */
+.vpick{display:grid;gap:8px;background:var(--navsel);border-radius:12px;padding:12px}
+.vpick .f{margin:0}
+.vpick-res{display:grid;gap:6px}
+.vpick-res:empty{display:none}
+.vpick-item{display:grid;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer}
+.vpick-item:hover:not(:disabled){border-color:var(--brand)}
+.vpick-item:disabled{opacity:.55;cursor:not-allowed}
+.vpick-item small{color:var(--muted);font-size:.8rem}
+.vpick-chip{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--brand);font-weight:600}
+.vpick-chip svg.i{width:16px;height:16px}
+.vpick-chip .btn.link{margin-left:auto;font-weight:500}
+.vpick input[type=search]{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;background:var(--surface);margin-top:6px}
