@@ -4,6 +4,7 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import { S, ui, setState } from './state.js';
 import { toast } from './ui.js';
 import { clock, timerRow, timerKey } from './timer.js';
+import { logRow } from './activity.js';
 
 export const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -96,4 +97,19 @@ export async function saveReport(sunId, svc, key, item, text) {
   const r = await q(sb.rpc('save_report', { p_sunday: sunId, p_svc: svc, p_key: key, p_item: item || null, p_text: text }));
   if (r && r !== true && r.sunday_id) S.reports[sunId + '|' + svc] = reportRow(r);
   return r !== null;
+}
+
+/** Load the activity log, 300 entries at a time (admins only; others get nothing back). */
+export async function loadActivity(more = false) {
+  const a = ui.act; if (!a || a.loading) return;
+  a.loading = true; a.error = '';
+  let query = sb.from('activity_log').select('*').order('at', { ascending: false }).order('id', { ascending: false }).limit(300);
+  const oldest = a.rows[a.rows.length - 1];
+  if (more && oldest) query = query.lt('at', new Date(oldest.at).toISOString());
+  const { data, error } = await query;
+  a.loading = false;
+  if (error) { a.error = /does not exist|schema cache|PGRST205|42P01/i.test(error.code + ' ' + error.message) ? 'This needs a database update. Run migrations/005-activity-log.sql in Supabase, then reload.' : 'Could not load the activity log: ' + error.message; a.loaded = true; onLoaded(); return; }
+  const rows = (data || []).map(logRow);
+  a.rows = more ? [...a.rows, ...rows] : rows; a.loaded = true; a.done = rows.length < 300;
+  onLoaded();
 }

@@ -3,7 +3,7 @@ import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
 import { ic } from './icons.js';
-import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport } from './data.js';
+import { sb, q, reload, saveSun, ensureSun, timerAction, saveReport, loadActivity } from './data.js';
 import { toast, modal, closeModal } from './ui.js';
 import { render } from './render.js';
 import {
@@ -16,6 +16,7 @@ import { memberForm, ciListHtml, ciService } from './views/checkin.js';
 import { eventForm } from './views/events.js';
 import { attKey } from './members.js';
 import { importView, importPlan } from './views/import.js';
+import { activityListHtml } from './views/activity.js';
 import { parseCsv, detectColumns } from './importer.js';
 import { timeRange } from './views/shared.js';
 
@@ -285,6 +286,14 @@ export const H = {
     if (ok) reload();
   },
 
+  /* activity log */
+  rsub(el) { ui.rsub = el.dataset.v; ui.rep = null; render(); },
+  actRefresh() { if (ui.act) { ui.act.loaded = false; ui.act.done = false; } render(); },
+  actMore() { loadActivity(true); render(); },
+  actText(el) { ui.act.text = el.value; const l = document.getElementById('actList'); if (l) l.innerHTML = activityListHtml(); },
+  actArea(el) { ui.act.area = el.value; render(); },
+  actActor(el) { ui.act.actor = el.value; render(); },
+
   /* events */
   evMonth(el) { const k = +el.dataset.k; ui.evMonth = k ? shiftMonth(ui.evMonth || ym(T.now), k) : ym(T.now); ui.evDay = k ? null : T.todayIso; render(); },
   evDay(el) { ui.evDay = el.dataset.date || null; render(); },
@@ -393,6 +402,6 @@ export const H = {
 };
 
 /* Actions fired by `change` or `input` instead of `click`. */
-export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote']);
-export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch']);
+export const CHANGE = new Set(['assign', 'useTpl', 'tLang', 'impFile', 'impMap', 'impOpt', 'repNote', 'actArea', 'actActor']);
+export const INPUT = new Set(['tName', 'oItem', 'oMin', 'ckText', 'ciSearch', 'actText']);
 export { TABS, ic };
