@@ -9,7 +9,7 @@ import { TABS } from './config.js';
    asg:    id → {sunId,svc,pos,person,status}
    timers: 'sunId|svc' → live timer (see timer.js)
    sun, tpl, cfg, chk, off, swap: as before */
-export const S = { people: {}, teams: {}, pos: {}, quals: {}, asg: {}, sun: {}, tpl: {}, cfg: {}, chk: {}, off: {}, swap: {}, timers: {}, members: {}, att: {}, events: {}, reports: {}, cats: {}, families: {}, mstats: {}, filters: {}, flows: {}, steps: {}, fentries: {} };
+export const S = { people: {}, teams: {}, pos: {}, quals: {}, asg: {}, sun: {}, tpl: {}, cfg: {}, chk: {}, off: {}, swap: {}, timers: {}, members: {}, att: {}, events: {}, reports: {}, cats: {}, families: {}, mstats: {}, filters: {}, flows: {}, steps: {}, fentries: {}, admins: {} };
 export function setState(next) { for (const k of Object.keys(S)) S[k] = next[k] || {}; }
 
 export const me = { email: '', admin: false, name: '' };

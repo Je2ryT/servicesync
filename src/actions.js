@@ -29,6 +29,7 @@ import { parseCsv, detectColumns, memberRows, newFamilies } from './importer.js'
 import { fold } from './members.js';
 import { timeRange } from './views/shared.js';
 import { reportDef, reportCsv, csvName } from './reportdefs.js';
+import { removeForm } from './views/admins.js';
 import { keyOf, ctx as rptCtx, flowPickForm, scheduleForm, parseEmails } from './views/rpt.js';
 
 /* ---------- helpers ---------- */
@@ -422,6 +423,24 @@ export const H = {
     if (old.length && !await q(sb.from('categories').upsert(old))) return;
     if (add.length && !await q(sb.from('categories').insert(add))) return;
     ui.catDraft = null; reload(); toast(t('saved'));
+  },
+
+  /* administrators */
+  async adminAdd() {
+    if (!me.admin) return;
+    const email = (val('admEmail').trim() || val('admPick')).toLowerCase(); const msg = document.getElementById('admMsg');
+    const say = text => { if (msg) { msg.textContent = text; msg.style.color = 'var(--bad)'; } };
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say(t('badEmails', { list: email || '—' }));
+    if (S.admins[email]) return say(t('adminAlready', { email }));
+    if (await q(sb.from('admins').insert({ email }))) { S.admins[email] = { by: String(me.email || '').toLowerCase(), at: Date.now() }; render(); toast(t('adminAdded', { email })); reload(); }
+  },
+  adminRemove(el) { if (me.admin && Object.keys(S.admins).length > 1) modal(removeForm(el.dataset.email)); },
+  async adminRemoveGo(el) {
+    const email = el.dataset.email; closeModal();
+    if (!await q(sb.from('admins').delete().eq('email', email))) return;
+    delete S.admins[email]; toast(t('adminRemoved', { email }));
+    if (email === String(me.email || '').toLowerCase()) { me.admin = false; ui.psub = 'all'; }
+    render(); reload();
   },
 
   /* attendance & people reports (009) */

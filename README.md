@@ -25,6 +25,7 @@ Database updates live in `migrations/`, numbered in order. For each one: in Supa
 | 007 | `007-messaging.sql` | Email and text messages: message log, recipients, opt-out history | Sending also needs the Vercel settings below. |
 | 008 | `008-followups.sql` | Follow-up flows (Newcomer flow with four steps), board, weekly reminder | From now on, new Visitors join the Newcomer flow automatically. People already in Visitors aren't added; use *Add to a follow-up* for them. The weekly email also needs `CRON_SECRET` below. |
 | 009 | `009-reports.sql` | Attendance & people reports, weekly report emails | Reports read what's already there, so they include history from before 009. Weekly emails need the messaging settings and `CRON_SECRET`. |
+| 010 | `010-admins.sql` | Manage administrators in the app (People → Administrators) | Emails are stored lower-case, the last administrator can't be removed, and changes go in the activity log. |
 
 Run `npm test` to apply `schema.sql` and every migration to a throwaway local Postgres and check the access rules, without touching Supabase.
 
@@ -203,9 +204,14 @@ Without this step, the sign-in email links point to the wrong place.
 | Approve or decline swaps | ✓ | |
 | Tick checklists in Live view | ✓ | ✓ |
 
-To add another administrator, run this in the Supabase SQL Editor:
+### Adding or removing administrators
+
+Go to **People → Administrators** (administrators only). Pick someone from the serving team, or type any email address, then press **Add administrator**. To take someone off the list, press **Remove** next to their name. They stay on the serving team with a team member's access. The change applies the next time they open or reload the app. The last administrator can't be removed, so the church is never locked out.
+
+Before migration 010, or if you're ever locked out, you can do the same in the Supabase SQL Editor:
 ```sql
 insert into admins (email) values ('their@email.com');
+delete from admins where email = 'their@email.com';
 ```
 
 ## Notes

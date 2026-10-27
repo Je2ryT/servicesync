@@ -5,6 +5,11 @@ import { ui } from './state.js';
 const D = {
   en: {
     // people list
+    admins: 'Administrators', adminsSub: 'Administrators plan the schedule, edit people and teams, send to anyone, and see every report. Everyone else on the serving team keeps their usual access.',
+    addAdmin: 'Add administrator', adminPick: 'Someone on the serving team', adminEmail: 'Email address', adminOr: 'or an email address', adminEmailPh: 'name@example.com', adminIsYou: 'You', adminNotRoster: 'Not on the serving team',
+    adminAddedBy: 'Added by {who}', adminAlready: '{email} is already an administrator.', adminAdded: '{email} is now an administrator.', adminRemoved: '{email} is no longer an administrator.',
+    adminRemoveTitle: 'Remove {name} as administrator?', adminRemoveBody: 'They keep their place on the serving team and can still sign in, with a team member’s access.', adminRemoveSelf: 'This is you. You will lose administrator access straight away.',
+    adminLast: 'This is the only administrator. Add someone else first.', adminRemove: 'Remove', adminPill: 'Administrator', adminsHelp: 'They sign in with this email. The change applies the next time they open or reload ServiceSync.',
     people: 'People', everyone: 'Everyone', servingTeam: 'Serving team', teamsPositions: 'Teams & positions',
     peopleSub: '{n} people in the church directory', search: 'Search by name, phone or email',
     category: 'Category', allCategories: 'All categories', language: 'Language', anyLanguage: 'Any language',
@@ -68,6 +73,11 @@ const D = {
     weekdays: 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday',
   },
   fr: {
+    admins: 'Administrateurs', adminsSub: 'Les administrateurs planifient le programme, modifient les personnes et les équipes, écrivent à tout le monde et voient tous les rapports. Les autres membres de l’équipe gardent leur accès habituel.',
+    addAdmin: 'Ajouter un administrateur', adminPick: 'Une personne de l’équipe de service', adminEmail: 'Adresse e-mail', adminOr: 'ou une adresse e-mail', adminEmailPh: 'nom@exemple.com', adminIsYou: 'Vous', adminNotRoster: 'Pas dans l’équipe de service',
+    adminAddedBy: 'Ajouté par {who}', adminAlready: '{email} est déjà administrateur.', adminAdded: '{email} est maintenant administrateur.', adminRemoved: '{email} n’est plus administrateur.',
+    adminRemoveTitle: 'Retirer {name} des administrateurs ?', adminRemoveBody: 'La personne reste dans l’équipe de service et peut toujours se connecter, avec l’accès d’un membre de l’équipe.', adminRemoveSelf: 'C’est vous. Vous perdrez l’accès administrateur immédiatement.',
+    adminLast: 'C’est le seul administrateur. Ajoutez d’abord quelqu’un d’autre.', adminRemove: 'Retirer', adminPill: 'Administrateur', adminsHelp: 'La personne se connecte avec cet e-mail. Le changement s’applique la prochaine fois qu’elle ouvre ou recharge ServiceSync.',
     people: 'Personnes', everyone: 'Tout le monde', servingTeam: 'Équipe de service', teamsPositions: 'Équipes et postes',
     peopleSub: '{n} personnes dans l’annuaire de l’église', search: 'Rechercher par nom, téléphone ou courriel',
     category: 'Catégorie', allCategories: 'Toutes les catégories', language: 'Langue', anyLanguage: 'Toutes les langues',
