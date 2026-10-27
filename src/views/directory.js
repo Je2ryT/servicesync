@@ -5,6 +5,7 @@ import { ic } from '../icons.js';
 import { t, lang, dateText } from '../i18n.js';
 import { everyone, filterPeople, cats, catName, catOf, familyOf, lastAttended, ageOn, savedFilters, isFiltered, EMPTY } from '../people.js';
 import { positionsOf, assignments, docOf, svcName, posName, status } from '../domain.js';
+import { profileFollowups } from './followups.js';
 
 const pf = () => ({ ...EMPTY, ...ui.pf });
 const opt = (pairs, v) => pairs.map(([k, l]) => `<option value="${esc(k)}" ${k === (v || '') ? 'selected' : ''}>${esc(l)}</option>`).join('');
@@ -94,6 +95,7 @@ function vProfile(id) {
           <div class="note-new"><textarea class="draft" id="noteNew" rows="2" placeholder="${esc(t('notePh'))}" aria-label="${esc(t('addNote'))}"></textarea><button class="btn cta" data-act="noteAdd" data-id="${esc(id)}">${esc(t('addNote'))}</button></div>
           ${!p ? `<div class="empty">${esc(t('loading'))}</div>` : p.notes.length ? `<ol class="notes">${p.notes.map(n => `<li><div class="note-h"><b>${esc(n.author ? whoName(n.author) : 'Elvanto / ServiceSync')}</b><span>${esc(new Date(n.at).toLocaleString(L === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }))}</span>
             ${me.admin || n.author === me.email.toLowerCase() ? `<button class="btn link danger" data-act="noteDel" data-id="${esc(n.id)}">${esc(t('del'))}</button>` : ''}</div><p>${esc(n.body)}</p></li>`).join('')}</ol>` : `<div class="empty">${esc(t('noNotes'))}</div>`}</section>
+        ${profileFollowups(id)}
         <section class="card"><div class="ch"><h3>${esc(t('attendance'))}</h3>${st ? `<span class="sub" style="margin:0;font-size:.82rem">${esc(t('visits', { n: st.visits }))}</span>` : ''}</div>
           ${st ? `<div class="att-strip" aria-label="${esc(t('attendance'))}">${weeks}</div><p class="sub" style="padding:0 20px;margin:0 0 10px">${esc(t('firstVisit', { d: dateText(st.first) }))} · ${esc(t('lastSeen', { d: dateText(st.last) }))}</p>
             ${p ? `<ul class="att-list">${p.att.slice(0, 12).map(a => `<li>${esc(dateText(a.date, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }))}<span class="pill mute">${a.svc.toUpperCase()}</span></li>`).join('')}</ul>` : ''}` : `<div class="empty">${esc(t('noAttendance'))}</div>`}</section>

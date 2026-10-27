@@ -4,6 +4,7 @@ import { esc } from '../util.js';
 import { ic } from '../icons.js';
 import { FIELDS, planImport, newFamilies } from '../importer.js';
 import { cats, catName } from '../people.js';
+import { t } from '../i18n.js';
 import { STATUS } from '../members.js';
 
 export const importPlan = () => planImport(ui.imp.rows, ui.imp.map, { lang: ui.imp.lang, status: ui.imp.status, cat: ui.imp.cat || 'congregation', categories: cats(true) }, Object.values(S.members));
@@ -32,6 +33,7 @@ export function importView() {
       <label class="f" style="flex:1">Language when the file doesn't say<select data-act="impOpt" data-k="lang">${opt({ fr: 'French', en: 'English', both: 'Both' }, im.lang)}</select></label>
       ${ui.peopleMissing ? `<label class="f" style="flex:1">Status when the file doesn't say<select data-act="impOpt" data-k="status">${opt(STATUS, im.status)}</select></label>`
         : `<label class="f" style="flex:1">Category when the file doesn't say<select data-act="impOpt" data-k="cat">${opt(Object.fromEntries(cats().map(c => [c.id, c.name])), im.cat || 'congregation')}</select></label>`}</div>
+    ${!ui.peopleMissing && !ui.flowsMissing ? `<div class="checks"><label><input type="checkbox" data-act="impOpt" data-k="flows" ${im.flows ? 'checked' : ''}> ${esc(t('importFlows'))}</label></div>` : ''}
     ${p.add.length ? `<div class="imp-prev"><table><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>${ui.peopleMissing ? 'Status' : 'Category'}</th></tr></thead><tbody>${p.add.slice(0, 6).map(m => `<tr><td>${esc(m.name)}${m.household ? `<small>${esc(m.household)}</small>` : ''}</td><td>${esc(m.phone || '')}</td><td>${esc(m.email || '')}</td><td>${esc(ui.peopleMissing ? STATUS[m.status] : catName(m.category_id))}${!ui.peopleMissing && m.birthday ? `<small>${esc(m.birthday)}</small>` : ''}</td></tr>`).join('')}</tbody></table>${p.add.length > 6 ? `<p class="sub" style="margin:6px 0 0">and ${p.add.length - 6} more</p>` : ''}</div>` : ''}
     ${p.dup.length ? `<p class="sub" style="margin:0">Skipped because they're already in ServiceSync: ${esc(p.dup.slice(0, 5).map(d => `${d.name} (${d.why})`).join(', '))}${p.dup.length > 5 ? '…' : ''}</p>` : ''}
     <div class="row" style="justify-content:space-between"><div class="row"><button class="btn cta" data-act="impRun" ${p.add.length ? '' : 'disabled'}>Import ${p.add.length} ${p.add.length === 1 ? 'person' : 'people'}</button><button class="btn ghost" data-act="closeModal">Cancel</button></div>

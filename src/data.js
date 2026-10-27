@@ -23,7 +23,7 @@ export async function q(p) {
   return data ?? true;
 }
 
-const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events', 'service_reports', 'categories', 'families', 'saved_filters', 'member_stats'];
+const TABLES = ['coordinators', 'sundays', 'templates', 'config', 'ticks', 'daysoff', 'swaps', 'teams', 'positions', 'person_positions', 'assignments', 'service_timers', 'members', 'attendance', 'events', 'service_reports', 'categories', 'families', 'saved_filters', 'member_stats', 'flows', 'flow_steps', 'flow_entries'];
 
 export async function loadAll() {
   const since = new Date(); since.setDate(since.getDate() - 180);   // attendance: the last six months is plenty for the screens
@@ -54,13 +54,17 @@ export async function loadAll() {
   const cats = {}; rows('categories').forEach(r => { cats[r.id] = { name: r.name, nameFr: r.name_fr || '', sort: r.sort || 0, active: r.active !== false }; });
   const families = {}; rows('families').forEach(r => { families[r.id] = { name: r.name, address: r.address || '' }; });
   const filters = {}; rows('saved_filters').forEach(r => { filters[r.id] = { name: r.name, filters: r.filters || {}, owner: r.owner || '', shared: !!r.shared }; });
+  ui.flowsMissing = !!(by.flows.error || by.flow_entries.error);   // migration 008 not run yet
+  const flows = {}; rows('flows').forEach(r => { flows[r.id] = { name: r.name, nameFr: r.name_fr || '', active: r.active !== false }; });
+  const steps = {}; rows('flow_steps').forEach(r => { steps[r.id] = { flow: r.flow_id, sort: r.sort || 0, title: r.title, titleFr: r.title_fr || '', assignee: r.default_assignee || null, days: r.due_days }; });
+  const fentries = {}; rows('flow_entries').forEach(r => { fentries[r.id] = { flow: r.flow_id, member: r.member_id, step: r.step_id, assignee: r.assignee || null, due: r.due_date || null, status: r.status, notes: r.notes || '', created: Date.parse(r.created_at), stepStarted: Date.parse(r.step_started_at), completed: r.completed_at ? Date.parse(r.completed_at) : null }; });
   const mstats = {}; rows('member_stats').forEach(r => { mstats[r.member_id] = { first: r.first_attended, last: r.last_attended, visits: r.visits, en: r.visits_en, fr: r.visits_fr }; });
   const att = {}; rows('attendance').forEach(r => { att[r.member_id + '|' + r.date + '|' + r.svc] = { member: r.member_id, date: r.date, svc: r.svc, at: Date.parse(r.at), by: r.by_coord }; });
   const events = {}; rows('events').forEach(r => { events[r.id] = { title: r.title, date: r.date, start: r.start_time || '', end: r.end_time || '', location: r.location || '', description: r.description || '' }; });
   ui.reportsMissing = !!by.service_reports.error;   // migration 004 not run yet
   const reports = {}; rows('service_reports').forEach(r => { reports[r.sunday_id + '|' + r.svc] = reportRow(r); });
   const asg = {}; rows('assignments').forEach(r => { asg[r.id] = { sunId: r.sunday_id, svc: r.svc, pos: r.position_id, person: r.person_id, status: r.status }; });
-  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events, reports, cats, families, filters, mstats });
+  setState({ people, sun, tpl, cfg, chk, off, swap, teams, pos, quals, asg, timers, members, att, events, reports, cats, families, filters, mstats, flows, steps, fentries });
   ui.needsMigration = false;
   if (ui.chkDraft && !ui.chkDraft.dirty) ui.chkDraft = null;
   ui.ready = true; onLoaded();
