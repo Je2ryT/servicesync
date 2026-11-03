@@ -1,4 +1,4 @@
--- ServiceSync · Migration 005 — activity log (who changed what)
+-- Cue (formerly ServiceSync) · Migration 005 — activity log (who changed what)
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run). It only adds things.
 --

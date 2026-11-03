@@ -1,4 +1,6 @@
-/* The Mont Carmel logo intro shown right after signing in (once per browser tab).
+import { mark, orgName } from './brand.js';
+import { esc } from './util.js';
+/* The Cue intro shown right after signing in (once per browser tab).
    Tap, click or press any key to skip. Short and still for people who prefer reduced motion. */
 const KEY = 'ss-intro';
 
@@ -10,8 +12,8 @@ export function showIntro() {
   const el = document.createElement('div');
   el.id = 'intro'; el.setAttribute('role', 'presentation');
   el.innerHTML = `<div class="intro-pan"><div class="intro-glow"></div><div class="intro-ring r1"></div><div class="intro-ring r2"></div>
-      <img class="intro-logo" src="/mc-logo.png" alt=""><div class="intro-sweep"></div></div>
-    <div class="intro-text"><b>MONT CARMEL</b><span id="introHello">Bienvenue · Welcome</span></div>`;
+      ${mark('intro-logo')}<div class="intro-sweep"></div></div>
+    <div class="intro-text"><b>${esc(orgName() || 'cue')}</b><span id="introHello">Welcome · Bienvenue</span></div>`;
   document.body.appendChild(el);
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   let done = false;
@@ -27,5 +29,5 @@ export function showIntro() {
 /** Put the person's first name in the intro once we know who signed in. */
 export function introName(name) {
   const n = document.getElementById('introHello'); const first = String(name || '').trim().split(/\s+/)[0];
-  if (n && first) n.textContent = `Bienvenue, ${first} · Welcome`;
+  if (n && first) n.textContent = `Welcome, ${first} · Bienvenue`;
 }

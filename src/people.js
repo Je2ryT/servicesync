@@ -72,7 +72,7 @@ export const savedFilters = email => Object.entries(S.filters || {}).map(([id, x
 const risky = s => /^[=+\-@]/.test(s) && !/^[+\-]?[\d\s().-]+$/.test(s);
 const cell = v => { const s = v == null ? '' : String(v); const x = risky(s) ? "'" + s : s; return /[",\n\r;]/.test(x) || x !== s ? '"' + x.replace(/"/g, '""') + '"' : x; };
 export const CSV_COLUMNS = ['First Name', 'Last Name', 'Email', 'Mobile', 'Gender', 'Birthday', 'Address', 'Family', 'Family Role', 'Category', 'Language', 'Last Attended', 'Visits', 'SMS Opt-out', 'Email Opt-out'];
-/** People as CSV (opens in Excel and re-imports into ServiceSync). */
+/** People as CSV (opens in Excel and re-imports into Cue). */
 export function toCsv(list) {
   const rows = list.map(m => [m.first || m.name, m.last, m.email, m.phone, m.gender, m.birthday, m.address, S.families[m.familyId]?.name || m.household || '', m.familyRole,
     catName(catOf(m)), m.lang === 'both' ? 'English, French' : m.lang === 'en' ? 'English' : 'French', S.mstats?.[m.id]?.last || '', S.mstats?.[m.id]?.visits || 0,

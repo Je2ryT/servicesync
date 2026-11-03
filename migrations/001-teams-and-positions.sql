@@ -1,4 +1,4 @@
--- ServiceSync · Migration 001 — teams, positions and assignments
+-- Cue (formerly ServiceSync) · Migration 001 — teams, positions and assignments
 --
 -- Run this once in Supabase (SQL Editor → New query → paste → Run),
 -- BEFORE the new version of the app goes live.

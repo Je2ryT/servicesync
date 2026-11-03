@@ -1,4 +1,4 @@
--- ServiceSync · Migration 010 — manage administrators in the app
+-- Cue (formerly ServiceSync) · Migration 010 — manage administrators in the app
 --
 -- Run once in Supabase → SQL Editor, after 009. Safe to run again.
 --
@@ -28,7 +28,7 @@ create trigger admins_clean before insert or update on admins for each row execu
 create or replace function admins_keep_one() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if not exists (select 1 from admins) then raise exception 'ServiceSync needs at least one administrator.'; end if;
+  if not exists (select 1 from admins) then raise exception 'Cue needs at least one administrator.'; end if;
   return null;
 end $$;
 drop trigger if exists admins_keep_one on admins;

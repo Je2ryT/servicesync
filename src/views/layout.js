@@ -1,5 +1,6 @@
 /* Printable service layout (Reports → a service → Service layout), and the placeholder editor
    used on Templates. The printed sheet follows the service's language: French services print in French. */
+import { orgName, orgLogo } from '../brand.js';
 import { S, T, ui, me } from '../state.js';
 import { esc } from '../util.js';
 import { ic } from '../icons.js';
@@ -39,7 +40,7 @@ export function vLayout(doc, svc) {
       <div class="row">${open ? `<span class="pill warn">${esc(t('layoutOpen', { n: open }))}</span>` : anyTags ? `<span class="pill ok">${esc(t('layoutFull'))}</span>` : ''}<button class="btn cta" data-act="layPrint">${ic('printer')} ${esc(t('printLayout'))}</button></div></div>
     ${anyTags ? '' : `<div class="card empty noprint">${esc(t('noPlaceholders'))} ${can('templates') ? `<button class="btn link" data-act="tab" data-tab="templates">${esc(t('openTemplates'))}</button>` : ''}</div>`}
     <article class="card lay-sheet" lang="${L}">
-      <header class="lay-head"><img src="/mc-logo.png" alt="" class="lay-logo"><div><span class="lay-church">Mont Carmel</span><h2>${esc(tIn(L, 'layoutTitle'))}</h2>
+      <header class="lay-head">${orgLogo() ? `<img src="${esc(orgLogo())}" alt="" class="lay-logo">` : ''}<div>${orgName() ? `<span class="lay-church">${esc(orgName())}</span>` : ''}<h2>${esc(tIn(L, 'layoutTitle'))}</h2>
         <p>${esc(serviceTitle(doc, svc, L))} · ${esc(dateLong)} · ${esc(timeIn(clock(startOf(doc, svc)), L))} – ${esc(timeIn(clock(startOf(doc, svc), total(tplFor(doc, svc))), L))}</p></div></header>
       <table class="lay-t"><thead><tr><th>${esc(tIn(L, 'colTime'))}</th><th>${esc(tIn(L, 'colPart'))}</th><th>${esc(tIn(L, 'colWho'))}</th></tr></thead>
         <tbody>${rows.map(r => `<tr><td class="lay-time">${esc(timeIn(r.start, L))}</td><td class="lay-part"><b>${esc(r.item)}</b><small>${esc(tIn(L, 'minShort', { n: r.min }))}</small></td>

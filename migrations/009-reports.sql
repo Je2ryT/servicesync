@@ -1,4 +1,4 @@
--- ServiceSync · Migration 009 — reports
+-- Cue (formerly ServiceSync) · Migration 009 — reports
 --
 -- Run once in Supabase → SQL Editor, after 008. Safe to run again.
 --

@@ -90,7 +90,7 @@ export function reportCsv(def, rows, ctx = {}) {
   const lines = [def.columns.map(c => c.label[lang]), ...rows.map(r => def.columns.map(c => cellText(c, r[c.k], c2)))];
   return '﻿' + lines.map(r => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
-export const csvName = (def, today) => `servicesync-${def.id}-${today}.csv`;
+export const csvName = (def, today) => `cue-${def.id}-${today}.csv`;
 
 /* ---------- attendance summaries (charts and tables) ---------- */
 const svcOf = r => (r.svc === 'en' || r.svc === 'fr' ? r.svc : 'ev');

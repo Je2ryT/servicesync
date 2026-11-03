@@ -100,6 +100,6 @@ describe('every screen renders', () => {
 
   it('someone not on the roster is told to ask the administrator', () => {
     me.admin = false; me.email = 'stranger@x.com'; render();
-    expect(document.getElementById('main').innerHTML).toContain('not on the Mont Carmel roster');
+    expect(document.getElementById('main').innerHTML).toContain('this organization');
   });
 });

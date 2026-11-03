@@ -1,4 +1,4 @@
-/* ServiceSync entry point: styles, event wiring and sign-in. */
+/* Cue entry point: styles, event wiring and sign-in. */
 import './styles.css';
 import { ui, me, readStage, pendingStage } from './state.js';
 import { sb, loadAll, whenLoaded, subscribe, syncClock } from './data.js';
@@ -47,7 +47,7 @@ async function start(session) {
   if (started) return; started = true;
   me.email = session.user.email || '';
   me.name = session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
-  if (!ui.stage) { showIntro(); introName(me.name); }   // the Mont Carmel logo while the church's data loads
+  if (!ui.stage) { showIntro(); introName(me.name); }   // the Cue intro while the organization's data loads
   const { data } = await sb.rpc('is_admin'); me.admin = !!data;
   await Promise.all([loadAll(), syncClock()]);
   introName(profile().name);

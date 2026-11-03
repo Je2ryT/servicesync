@@ -1,4 +1,4 @@
--- ServiceSync · Mont Carmel Church
+-- Cue · service coordination and event planning
 -- Run this once in Supabase: Dashboard → SQL Editor → New query → paste → Run.
 
 -- ============ Tables ============

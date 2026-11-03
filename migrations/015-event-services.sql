@@ -1,4 +1,4 @@
--- ServiceSync · Migration 015 — calendar events linked to a service plan (and its layout)
+-- Cue (formerly ServiceSync) · Migration 015 — calendar events linked to a service plan (and its layout)
 --
 -- Run once in Supabase → SQL Editor, after 014. Safe to run again.
 --

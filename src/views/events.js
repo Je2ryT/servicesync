@@ -1,4 +1,5 @@
 /* Events: the church calendar, by month, with Sunday services marked. */
+import { orgName } from '../brand.js';
 import { S, T, ui, me } from '../state.js';
 import { esc, fmt, ym, parse, iso, monthName, clock } from '../util.js';
 import { ic } from '../icons.js';
@@ -60,7 +61,7 @@ export function vEvents() {
   const byTime = (a, b) => a.date.localeCompare(b.date) || (a.start || '').localeCompare(b.start || '');
   const list = sel ? [...servicesOn(sel), ...eventsOn(sel)].sort(byTime) : [...upcomingEvents(8, from), ...upcomingSpecials(from)].sort(byTime).slice(0, 8);
   const head = sel ? esc(fmt(sel, { weekday: 'long', month: 'long', day: 'numeric' })) : 'Coming up';
-  return `<div class="head"><div><h1>Events</h1><p class="sub">The Mont Carmel calendar: services, prayer nights, youth, conferences.</p></div>
+  return `<div class="head"><div><h1>Events</h1><p class="sub">Everything on the calendar: services, meetings, gatherings and special events.</p></div>
       ${can('schedule') ? `<button class="btn cta" data-act="editEvent" data-date="${esc(sel || '')}">${ic('plus')} Add event</button>` : ''}</div>
     <div class="ev-wrap"><div class="card cal">
       <div class="ch"><h3>${esc(monthName(m))}</h3><div class="row"><button class="btn sq" data-act="evMonth" data-k="-1" aria-label="Previous month">${ic('left')}</button><button class="btn" data-act="evMonth" data-k="0">Today</button><button class="btn sq" data-act="evMonth" data-k="1" aria-label="Next month">${ic('right')}</button></div></div>
@@ -78,7 +79,7 @@ function planBox(e) {
 }
 
 export function eventForm(id, date) {
-  const e = id ? S.events[id] : { title: '', date: date || T.todayIso, start: '19:00', end: '', location: 'Mont Carmel', description: '' };
+  const e = id ? S.events[id] : { title: '', date: date || T.todayIso, start: '19:00', end: '', location: orgName(), description: '' };
   return `<h2>${id ? 'Edit event' : 'New event'}</h2>
     <label class="f">Title<input type="text" id="eTitle" value="${esc(e.title)}" placeholder="Prayer night, youth meeting…"></label>
     <div class="row" style="flex-wrap:nowrap;align-items:end"><label class="f" style="flex:1.4">Date<input type="date" id="eDate" value="${esc(e.date)}"></label>

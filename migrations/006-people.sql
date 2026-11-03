@@ -1,4 +1,4 @@
--- ServiceSync · Migration 006 — richer people (Phase 1)
+-- Cue (formerly ServiceSync) · Migration 006 — richer people (Phase 1)
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run). Safe to run twice.
 -- Nothing is deleted:

@@ -1,4 +1,4 @@
--- ServiceSync · Migration 016 — every calendar event is on the Schedule (and the other way round)
+-- Cue (formerly ServiceSync) · Migration 016 — every calendar event is on the Schedule (and the other way round)
 --
 -- Run once in Supabase → SQL Editor, after 015. Safe to run again.
 --

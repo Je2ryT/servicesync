@@ -1,4 +1,4 @@
--- ServiceSync · Migration 012 — different levels of access for each administrator
+-- Cue (formerly ServiceSync) · Migration 012 — different levels of access for each administrator
 --
 -- Run once in Supabase → SQL Editor, after 011. Safe to run again.
 --
@@ -36,8 +36,8 @@ grant execute on function is_full_admin() to authenticated;
 create or replace function admins_keep_one() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if not exists (select 1 from admins) then raise exception 'ServiceSync needs at least one administrator.'; end if;
-  if not exists (select 1 from admins where perms is null) then raise exception 'ServiceSync needs at least one administrator with full access.'; end if;
+  if not exists (select 1 from admins) then raise exception 'Cue needs at least one administrator.'; end if;
+  if not exists (select 1 from admins where perms is null) then raise exception 'Cue needs at least one administrator with full access.'; end if;
   return null;
 end $$;
 drop trigger if exists admins_keep_one on admins;

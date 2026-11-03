@@ -1,4 +1,4 @@
--- ServiceSync · Migration 014 — only full administrators see who the administrators are
+-- Cue (formerly ServiceSync) · Migration 014 — only full administrators see who the administrators are
 --
 -- Run once in Supabase → SQL Editor, after 013. Safe to run again.
 --

@@ -1,4 +1,4 @@
--- ServiceSync · Migration 008 — newcomer follow-up flows (Phase 3)
+-- Cue (formerly ServiceSync) · Migration 008 — newcomer follow-up flows (Phase 3)
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run). Safe to run twice; it only adds things.
 --

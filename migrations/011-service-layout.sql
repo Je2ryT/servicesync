@@ -1,4 +1,4 @@
--- ServiceSync · Migration 011 — printable service layout
+-- Cue (formerly ServiceSync) · Migration 011 — printable service layout
 --
 -- Run once in Supabase → SQL Editor, after 010. Safe to run again.
 --

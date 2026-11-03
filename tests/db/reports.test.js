@@ -104,7 +104,7 @@ describe('weekly report emails (009)', () => {
     expect(m.to).toEqual([JERRY, ANNA]); expect(m.subject).toBe('Absents · 1 ligne');
     expect(m.html).toContain('Gone Gary'); expect(m.html).toContain('Dernière présence');
     const csv = Buffer.from(m.attachments[0].content, 'base64').toString('utf8');
-    expect(m.attachments[0].filename).toBe('servicesync-absentees-2026-10-26.csv');
+    expect(m.attachments[0].filename).toBe('cue-absentees-2026-10-26.csv');
     expect(csv).toContain('Gone Gary,Assemblée,704-555-0102');
     expect((await scheduledReports({ db: dbi, env, fetch, now: monday })).reports).toBe(0);   // already sent today
     expect(mail.length).toBe(1);

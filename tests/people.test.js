@@ -81,7 +81,7 @@ describe('directory rules', () => {
     expect(P.savedFilters('boss@x.com').map(f => f.id)).toEqual(['s1']);
     expect(P.savedFilters('other@x.com').map(f => f.id)).toEqual(['s2', 's1']);
   });
-  it('exports CSV that Excel opens safely and ServiceSync re-imports', () => {
+  it('exports CSV that Excel opens safely and Cue re-imports', () => {
     S.members.m3.address = '=HYPERLINK("x")'; S.members.m3.phone = '+1 704 555 0199';
     const csv = P.toCsv(P.filterPeople({ cat: 'visitors' }));
     const rows = I.parseCsv(csv);

@@ -94,7 +94,7 @@ function vProfile(id) {
       <div class="prof-col">
         <section class="card"><div class="ch"><h3>${esc(t('notes'))}</h3></div>
           <div class="note-new"><textarea class="draft" id="noteNew" rows="2" placeholder="${esc(t('notePh'))}" aria-label="${esc(t('addNote'))}"></textarea><button class="btn cta" data-act="noteAdd" data-id="${esc(id)}">${esc(t('addNote'))}</button></div>
-          ${!p ? `<div class="empty">${esc(t('loading'))}</div>` : p.notes.length ? `<ol class="notes">${p.notes.map(n => `<li><div class="note-h"><b>${esc(n.author ? whoName(n.author) : 'Elvanto / ServiceSync')}</b><span>${esc(new Date(n.at).toLocaleString(L === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }))}</span>
+          ${!p ? `<div class="empty">${esc(t('loading'))}</div>` : p.notes.length ? `<ol class="notes">${p.notes.map(n => `<li><div class="note-h"><b>${esc(n.author ? whoName(n.author) : 'Imported')}</b><span>${esc(new Date(n.at).toLocaleString(L === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }))}</span>
             ${can('people') || n.author === me.email.toLowerCase() ? `<button class="btn link danger" data-act="noteDel" data-id="${esc(n.id)}">${esc(t('del'))}</button>` : ''}</div><p>${esc(n.body)}</p></li>`).join('')}</ol>` : `<div class="empty">${esc(t('noNotes'))}</div>`}</section>
         ${profileFollowups(id)}
         <section class="card"><div class="ch"><h3>${esc(t('attendance'))}</h3>${st ? `<span class="sub" style="margin:0;font-size:.82rem">${esc(t('visits', { n: st.visits }))}</span>` : ''}</div>

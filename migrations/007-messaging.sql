@@ -1,4 +1,4 @@
--- ServiceSync · Migration 007 — messaging: email and text messages (Phase 2)
+-- Cue (formerly ServiceSync) · Migration 007 — messaging: email and text messages (Phase 2)
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run). Safe to run twice; it only adds things.
 --

@@ -1,4 +1,4 @@
--- ServiceSync · Migration 004 — service reports
+-- Cue (formerly ServiceSync) · Migration 004 — service reports
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run). It only adds things.
 --

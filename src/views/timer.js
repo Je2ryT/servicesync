@@ -84,7 +84,7 @@ export function vTimerCard(doc, svc) {
 export function vStage() {
   const { sun, svc } = ui.stage; const doc = docOf(sun);
   if (!doc || !visible(doc) || !(svc === 'ev' ? doc.special : !doc.special)) {
-    return `<div class="stage"><div class="stage-empty"><p>This service isn't available. It may not be published yet.</p><button class="btn" data-act="stageExit">Back to ServiceSync</button></div></div>`;
+    return `<div class="stage"><div class="stage-empty"><p>This service isn't available. It may not be published yet.</p><button class="btn" data-act="stageExit">Back to Cue</button></div></div>`;
   }
   const lang = langOf(svc); const L = labels(lang); const v = viewFor(doc, svc);
   const msg = v.message ? `<div class="smsg" role="status">${esc(v.message)}</div>` : '';

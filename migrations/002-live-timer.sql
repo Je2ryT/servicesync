@@ -1,4 +1,4 @@
--- ServiceSync · Migration 002 — live service timer
+-- Cue (formerly ServiceSync) · Migration 002 — live service timer
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run), BEFORE the
 -- version of the app with the timer goes live. It only adds things.

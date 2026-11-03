@@ -13,7 +13,7 @@ export function weekOf(d = new Date()) {
 /** Log one system email in messages/message_recipients. Returns false when this key was already sent. */
 export async function logSystemEmail(db, { key, subject, body, to, memberId, name, source }) {
   const ins = await db.q(`insert into messages (idempotency_key, sender_email, sender_name, channel, subject, body, source, recipients, status)
-                          values ($1, 'servicesync@system', 'ServiceSync', 'email', $2, $3, $4, 1, 'sending') on conflict (idempotency_key) do nothing returning id`, [key, subject, body, JSON.stringify(source)]);
+                          values ($1, 'cue@system', 'Cue', 'email', $2, $3, $4, 1, 'sending') on conflict (idempotency_key) do nothing returning id`, [key, subject, body, JSON.stringify(source)]);
   if (!ins.length) return null;
   await db.q(`insert into message_recipients (message_id, member_id, name, channel, address, status) values ($1, $2, $3, 'email', $4, 'sending')`, [ins[0].id, memberId || null, name || null, to]);
   return ins[0].id;
@@ -71,7 +71,7 @@ export async function scheduledReports({ db, env = process.env, fetch = globalTh
     const more = rows.length > shown.length ? (lang === 'fr' ? `${shown.length} lignes sur ${rows.length} ci-dessus ; le fichier CSV joint contient tout.` : `${shown.length} of ${rows.length} rows above; the attached CSV has everything.`) : '';
     const link = base ? `${base}/#reports` : '';
     const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#1c2140"><h2 style="margin:0 0 4px;font-size:18px">${escapeHtml(title)}</h2><p style="margin:0 0 12px;color:#5f6680">${escapeHtml(summary)}</p>
-      ${rows.length ? `<table style="border-collapse:collapse;width:100%"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>` : ''}<p style="color:#5f6680;font-size:13px">${escapeHtml(more)}${link ? ` <a href="${escapeHtml(link)}">ServiceSync</a>` : ''}</p></div>`;
+      ${rows.length ? `<table style="border-collapse:collapse;width:100%"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>` : ''}<p style="color:#5f6680;font-size:13px">${escapeHtml(more)}${link ? ` <a href="${escapeHtml(link)}">Open Cue</a>` : ''}</p></div>`;
     const text = `${title}\n${summary}\n\n${shown.map(r => def.columns.map(c => cellText(c, r[c.k], ctx)).filter(Boolean).join(' · ')).join('\n')}\n\n${more} ${link}`.trim();
     const key = `report-${s.id}-${today}`; const to = s.recipients || [];
     const id = await logSystemEmail(db, { key, subject, body: text, to: to.join(', '), name: title, source: { kind: 'report', report: s.report, schedule: s.id } });

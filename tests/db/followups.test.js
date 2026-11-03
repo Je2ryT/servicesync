@@ -88,6 +88,6 @@ describe('weekly follow-up reminder (008)', () => {
     expect(sentMail[0].list[0].text).not.toContain('Daniel Okafor');
     const again = await followupReminders({ db: dbi, env, fetch });
     expect(again).toMatchObject({ sent: 0, skipped: 1 }); expect(sentMail.length).toBe(1);
-    expect((await admin(db, `select sender_name, status, source ->> 'kind' k from messages where idempotency_key like 'followups-%'`))[0]).toEqual({ sender_name: 'ServiceSync', status: 'sent', k: 'followup-reminder' });
+    expect((await admin(db, `select sender_name, status, source ->> 'kind' k from messages where idempotency_key like 'followups-%'`))[0]).toEqual({ sender_name: 'Cue', status: 'sent', k: 'followup-reminder' });
   });
 });

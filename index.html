@@ -3,26 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>ServiceSync · Mont Carmel</title>
-<meta name="description" content="Sunday service scheduling and coordination for Mont Carmel Church.">
+<title>Cue · Service coordination and event planning</title>
+<meta name="description" content="Cue: scheduling, run sheets, live timing and people care for churches and organizations that run events.">
 <meta name="theme-color" content="#ffffff">
+<link rel="icon" type="image/svg+xml" href="/cue-mark.svg">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 </head>
 <body>
 
 <header class="top">
   <div class="wrap bar">
     <button class="menu-btn" data-act="navToggle" aria-label="Menu" aria-controls="tabs" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    <div class="logo"><img class="mc" src="/mc-logo.png" alt="Mont Carmel"><div><b>ServiceSync</b><small>MONT CARMEL</small></div></div>
+    <div class="logo"><img class="cue-mark" src="/cue-mark.svg" alt=""><div><b class="wordmark">cue</b><small id="orgTag"></small></div></div>
     <nav class="tabs" role="tablist" id="tabs"></nav>
     <div class="who" id="who"></div>
   </div>
   <div id="banner"></div>
 </header>
-<main class="wrap" id="main"><div class="empty">Loading the church schedule…</div></main>
+<main class="wrap" id="main"><div class="empty">Loading…</div></main>
 <div class="nav-scrim" data-act="navToggle"></div>
 <div id="overlay"></div>
 

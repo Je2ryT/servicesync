@@ -2,7 +2,7 @@
    Rules: admins can message anyone; a coordinator can message only the people on their own team(s).
    Opted-out people and missing phone/email are skipped and recorded. A retried request (same
    idempotency key) never sends twice: each recipient is claimed before it is sent. */
-import { httpError, userFromToken, roleOf, twilioSend, resendBatch, unsubscribeUrl, escapeHtml, pool2, sleep, appUrl } from './lib.js';
+import { httpError, userFromToken, roleOf, twilioSend, resendBatch, unsubscribeUrl, escapeHtml, pool2, sleep, appUrl, orgName } from './lib.js';
 import { toE164, merge, smsInfo } from '../src/sms.js';
 
 export const LIMITS = { maxRecipients: 1000, perWindow: 5, windowMinutes: 10, smsConcurrency: 4, smsGapMs: process.env.VITEST ? 0 : 120, emailBatch: 100, maxBody: 1600, maxSubject: 200 };
@@ -36,10 +36,10 @@ export async function teamMemberIds(db, coordinatorId) {
   return new Set(rows.map(r => r.id));
 }
 
-const emailHtml = (text, unsubscribe, lang) => `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#1c2140;max-width:600px;margin:0 auto;padding:24px">
+const emailHtml = (text, unsubscribe, lang, org = '') => `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.5;color:#1c2140;max-width:600px;margin:0 auto;padding:24px">
   <div>${escapeHtml(text).replace(/\n/g, '<br>')}</div>
   <hr style="border:0;border-top:1px solid #e2e5ef;margin:28px 0 12px">
-  <p style="font-size:12px;color:#5f6680">Mont Carmel · ServiceSync<br><a href="${unsubscribe}" style="color:#5f6680">${lang === 'en' ? 'Unsubscribe from these emails' : lang === 'fr' ? 'Se désabonner de ces courriels' : 'Unsubscribe · Se désabonner'}</a></p></body></html>`;
+  <p style="font-size:12px;color:#5f6680">${org ? escapeHtml(org) + ' · ' : ''}Sent with Cue<br><a href="${unsubscribe}" style="color:#5f6680">${lang === 'en' ? 'Unsubscribe from these emails' : lang === 'fr' ? 'Se désabonner de ces courriels' : 'Unsubscribe · Se désabonner'}</a></p></body></html>`;
 
 /**
  * Handle one send request. deps: { db, env, fetch, now }.
@@ -113,7 +113,7 @@ export async function handleSend({ token, input, req }, { db, env = process.env,
     const part = em.slice(i, i + LIMITS.emailBatch);
     const emails = part.map(r => {
       const p = people.get(r.member_id) || {}; const u = unsubscribeUrl(r.member_id, env, base); const text = merge(m.body, p);
-      return { to: [r.address], subject: merge(m.subject || '', p), text: `${text}\n\n—\n${p.lang === 'fr' ? 'Se désabonner' : 'Unsubscribe'}: ${u}`, html: emailHtml(text, u, p.lang),
+      return { to: [r.address], subject: merge(m.subject || '', p), text: `${text}\n\n—\n${p.lang === 'fr' ? 'Se désabonner' : 'Unsubscribe'}: ${u}`, html: emailHtml(text, u, p.lang, orgName(env)),
         headers: { 'List-Unsubscribe': `<${u}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } };
     });
     const res = await resendBatch(emails, `${m.id}-${part[0].id}`, { env, fetch }).catch(e => ({ ok: false, error: e.message }));

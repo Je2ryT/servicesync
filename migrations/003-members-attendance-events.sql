@@ -1,4 +1,4 @@
--- ServiceSync · Migration 003 — church members, check-in attendance, events
+-- Cue (formerly ServiceSync) · Migration 003 — church members, check-in attendance, events
 --
 -- Run once in Supabase (SQL Editor → New query → paste → Run). It only adds tables.
 --

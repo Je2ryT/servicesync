@@ -102,6 +102,9 @@ export async function resendEmail(email, idempotencyKey, { env = process.env, fe
 }
 
 /* ---------- small things ---------- */
+/** The organization's name, taken from the display name in MAIL_FROM ("Grace Church <hello@grace.org>" → "Grace Church"). */
+export const orgName = (env = process.env) => (String(env.MAIL_FROM || '').match(/^\s*"?([^<"]+?)"?\s*</) || [])[1] || '';
+
 export const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 /** Run fn over items, at most `limit` at a time. */

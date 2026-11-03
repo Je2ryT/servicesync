@@ -1,3 +1,4 @@
+import { orgName } from './brand.js';
 import { ui, me } from './state.js';
 import { TABS, TAB_ICONS } from './config.js';
 import { esc } from './util.js';
@@ -24,6 +25,7 @@ export function render() {
   if (ui.ready && a && a.classList && a.classList.contains('draft')) { pending = true; return; }   // don't wipe a field mid-typing
   pending = false;
   stageMode(false); sideMode(false);
+  const tag = document.getElementById('orgTag'); if (tag) tag.textContent = orgName();
   const tabs = document.getElementById('tabs'); const main = document.getElementById('main'); const who = document.getElementById('who');
   tabs.innerHTML = TABS.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${ui.tab === k}">${ic(TAB_ICONS[k] || 'list')}<span>${l}</span></button>`).join('');
   if (!ui.session) {

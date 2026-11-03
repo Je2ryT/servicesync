@@ -1,6 +1,8 @@
-# ServiceSync · Mont Carmel
+# Cue
 
-Sunday service scheduling for Mont Carmel Church: teams and positions (coordinators, worship, sound, ushers…), monthly calendar with auto-fill, coverage and workload checks, double-booking warnings, live Sunday checklists, a live service timer with a full-screen stage screen, confirm/decline and swap requests, and order-of-service templates.
+Service coordination and event planning for churches and any organization that runs events: teams and positions, a monthly calendar with auto-fill, coverage and workload checks, double-booking warnings, run sheets and order-of-service templates, live checklists, **Cue mode** (a live timer with a full-screen stage screen and phone remotes), confirm/decline and swap requests, check-in, a people directory, newcomer follow-ups, reports, and email and text messaging. English and French throughout.
+
+> Cue grew out of ServiceSync, built for one bilingual church. Multi-organization support (sign up, invite your team, keep each organization's data separate) is in progress.
 
 - **Hosting:** Vercel (Vite build, settings in `vercel.json`)
 - **Logins and data:** Supabase (free tier is plenty)
@@ -37,7 +39,7 @@ Run `npm test` to apply `schema.sql` and every migration to a throwaway local Po
 
 ## People
 
-**People → Everyone** is the church directory (the serving team and teams & positions are the other two tabs).
+**People → Everyone** is the directory (the serving team and teams & positions are the other two tabs).
 
 - **Filters:** search by name, phone or email; category, language, service attended, last attended (in the last 2 weeks / month / 3 months, not in the last month / 3 months, never), has a phone, has an email. **Save filter** keeps a combination (shared with the serving team, or just for you).
 - **Bulk:** tick people or **Select all shown**, then **Set category…** (admins) or **Export CSV**. The CSV opens in Excel and can be imported back.
@@ -61,17 +63,17 @@ Run `npm test` to apply `schema.sql` and every migration to a throwaway local Po
 |---|---|
 | `SUPABASE_DB_URL` | Supabase → Project Settings → Database → Connection string, **Transaction pooler** (port 6543), with your database password filled in |
 | `UNSUBSCRIBE_SECRET` | Any long random text (signs the unsubscribe links). For example, the output of `openssl rand -hex 32` |
-| `APP_URL` | Your site address, e.g. `https://servicesync-ruby.vercel.app` |
+| `APP_URL` | Your site address, e.g. `https://cue.example.com` |
 | `TWILIO_SID`, `TWILIO_TOKEN` | Twilio Console → Account Info |
 | `TWILIO_FROM` | Your Twilio number (`+1…`) or Messaging Service SID (`MG…`) |
 | `RESEND_API_KEY` | Resend → API Keys |
-| `MAIL_FROM` | e.g. `Mont Carmel <noreply@yourdomain.org>` (the domain must be verified in Resend) |
+| `MAIL_FROM` | e.g. `Grace Church <noreply@yourdomain.org>` (the domain must be verified in Resend). The name before the address is shown as the sender and in email footers |
 
 Then in Twilio, set the number's (or Messaging Service's) **incoming message webhook** to `https://<your site>/api/twilio-inbound` (HTTP POST). US carriers require registering business texting (A2P 10DLC) in Twilio before bulk texts are delivered; this can take a couple of weeks.
 
 ## Follow-ups
 
-The **Follow-ups** tab shows one board per flow, with a column for each step. The church starts with a *Newcomer* flow: Welcome text (1 day), Phone call (3 days), Second visit (7 days), Connect to a group (14 days). Administrators can rename steps, change their due days, give each step a default person, and add new flows.
+The **Follow-ups** tab shows one board per flow, with a column for each step. Each organization starts with a *Newcomer* flow: Welcome text (1 day), Phone call (3 days), Second visit (7 days), Connect to a group (14 days). Administrators can rename steps, change their due days, give each step a default person, and add new flows.
 
 - Anyone added through check-in, or moved into the *Visitors* category, joins the Newcomer flow. Imports don't, unless you tick *Add new Visitors to the Newcomer follow-up* on the import screen.
 - **Mark done** writes a line on the person's notes timeline and moves them to the next step (with that step's default person, if it has one). After the last step the follow-up is finished.
@@ -91,7 +93,7 @@ Print the order of service before every service, with who leads each part.
    - Each name box starts empty: type who will moderate, preach, interpret, and so on. It's saved for that service only.
    - If someone is scheduled in a matching position (the one linked to the placeholder, or one with the same name, such as Pastor, Moderator, Interpreter/Interprète or Choir/Chorale), their name is offered under the box: press it to use it.
    - Places nobody fills print as a blank line, to write in by hand.
-3. Press **Print**. The sheet has the church logo, the date and times, a Notes area, and prints in colour. French services print in French.
+3. Press **Print**. The sheet has your organization's logo and name, the date and times, a Notes area, and prints in colour. French services print in French.
 
 Administrators can fill in any service; people on the roster can fill in published Sundays (the same rule as service reports).
 
@@ -145,9 +147,9 @@ Team members see the same people and attendance they can already see in the app.
 
 - **Home** opens with the profile of whoever is signed in (next time serving, positions, contact), notifications (confirmations to answer, swap requests, coverage issues, newcomers, events this week), today's check-in numbers and upcoming events. Admins also see the planning overview below.
 - **Check-in**: pick the service (it picks English before 11:15 on Sundays, French after), search by name or phone, tap a name when someone arrives. Tap twice to undo. **New person** adds a newcomer and checks them in at once. Anyone on the roster can check people in; only admins edit or remove members.
-- **Import from Elvanto** (Check-in, admins): in Elvanto open **People → Export → CSV**, then choose that file. ServiceSync matches the columns (first/last name, email, mobile, gender, birthday, address, family and family relationship, category), creates the families, shows a preview, and skips anyone already here (same email, phone or name). Nothing is saved until you press Import.
-- **Events**: the church calendar by month, with Sundays marked. Admins add, edit and delete events.
-- After signing in, the Mont Carmel logo plays a short intro (once per browser tab; tap to skip).
+- **Import from Elvanto** (Check-in, admins): in Elvanto open **People → Export → CSV**, then choose that file. Cue matches the columns (first/last name, email, mobile, gender, birthday, address, family and family relationship, category), creates the families, shows a preview, and skips anyone already here (same email, phone or name). Nothing is saved until you press Import.
+- **Events**: the calendar by month, with service days marked. Admins add, edit and delete events.
+- After signing in, a short Cue intro plays (once per browser tab; tap to skip).
 - The serving-team calendar tab is now called **Schedule**.
 
 ## Service reports
@@ -259,7 +261,7 @@ Without this step, the sign-in email links point to the wrong place.
 
 ### Adding or removing administrators
 
-Go to **People → Administrators** (administrators only). Pick someone from the serving team, or type any email address, then press **Add administrator** and choose what they manage. To take someone off the list, press **Remove** next to their name. They stay on the serving team with a team member's access. The change applies the next time they open or reload the app. The last administrator can't be removed, so the church is never locked out.
+Go to **People → Administrators** (administrators only). Pick someone from the serving team, or type any email address, then press **Add administrator** and choose what they manage. To take someone off the list, press **Remove** next to their name. They stay on the serving team with a team member's access. The change applies the next time they open or reload the app. The last administrator can't be removed, so the organization is never locked out.
 
 **Access levels** (after migration 012): give an administrator **Full access**, or tick only the areas they manage:
 

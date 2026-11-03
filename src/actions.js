@@ -1,4 +1,5 @@
 /* Everything a click, change or keystroke can do. Keys match data-act attributes in the views. */
+import { orgName } from './brand.js';
 import { S, ui, me, T, forgetStage } from './state.js';
 import { TABS } from './config.js';
 import { esc, fmt, ym, shiftMonth, monthName, sundaysOf, uid } from './util.js';
@@ -38,7 +39,7 @@ import { can, isFull } from './access.js';
 
 /* ---------- helpers ---------- */
 function shareText() {
-  const m = ui.month; const lines = [`Mont Carmel · ServiceSync — ${monthName(m)}`];
+  const m = ui.month; const lines = [`${orgName() ? orgName() + ' · ' : ''}Cue — ${monthName(m)}`];
   for (const r of monthRows(m)) {
     if (!r.doc || !visible(r.doc)) continue;
     lines.push('', `${fmt(r.date, { weekday: 'short', month: 'short', day: 'numeric' })}${r.doc.special ? ' · ' + (r.doc.title || '') : ''}`);
@@ -449,7 +450,7 @@ export const H = {
   },
   pExport() {
     const sel = new Set(ui.psel); const list = filterPeople({ ...ui.pf }).filter(m => !sel.size || sel.has(m.id));
-    download(`servicesync-people-${T.todayIso}.csv`, toCsv(list));
+    download(`cue-people-${T.todayIso}.csv`, toCsv(list));
   },
   openPerson(el) { ui.person = el.dataset.id; ui.prof = null; ui.tab = 'roster'; ui.psub = 'all'; render(); window.scrollTo(0, 0); loadProfile(ui.person); },
   personBack() { ui.person = null; ui.prof = null; render(); },

@@ -1,4 +1,4 @@
--- ServiceSync · Migration 013 — add volunteers from the members list
+-- Cue (formerly ServiceSync) · Migration 013 — add volunteers from the members list
 --
 -- Run once in Supabase → SQL Editor, after 012. Safe to run again.
 --

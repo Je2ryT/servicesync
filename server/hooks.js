@@ -1,6 +1,6 @@
 /* Webhooks and links that come from outside: Twilio replies (STOP/START), Twilio delivery
    updates, and the unsubscribe link in every email. */
-import { httpError, twilioSignatureOk, verify, escapeHtml } from './lib.js';
+import { httpError, twilioSignatureOk, verify, escapeHtml, orgName } from './lib.js';
 import { replyIntent } from '../src/sms.js';
 
 const last10 = p => String(p || '').replace(/\D/g, '').slice(-10);
@@ -46,14 +46,17 @@ export async function handleUnsubscribe({ method, memberId, sig }, { db, env = p
       await db.q(`update members set email_opt_out = true where id = $1`, [m.id]);
       await db.q(`insert into optout_events (member_id, channel, action, source) values ($1, 'email', 'out', 'email-link')`, [m.id]);
     }
-    return { status: 200, html: page('You are unsubscribed', 'Vous êtes désabonné', 'You will no longer receive emails from Mont Carmel through ServiceSync.', 'Vous ne recevrez plus de courriels de Mont Carmel via ServiceSync.') };
+    return { status: 200, html: page('You are unsubscribed', 'Vous êtes désabonné', `You will no longer receive emails from ${from(env)}.`, `Vous ne recevrez plus de courriels de ${from(env, 'fr')}.`) };
   }
   const who = escapeHtml(m.first_name || String(m.name || '').split(' ')[0] || '');
-  return { status: 200, html: page(`Unsubscribe${who ? ', ' + who : ''}?`, `Se désabonner${who ? ', ' + who : ''} ?`, 'Stop receiving emails from Mont Carmel through ServiceSync.', 'Ne plus recevoir de courriels de Mont Carmel via ServiceSync.', true) };
+  return { status: 200, html: page(`Unsubscribe${who ? ', ' + who : ''}?`, `Se désabonner${who ? ', ' + who : ''} ?`, `Stop receiving emails from ${from(env)}.`, `Ne plus recevoir de courriels de ${from(env, 'fr')}.`, true) };
 }
 
+/** Who the emails come from, for the unsubscribe page. */
+const from = (env, L = 'en') => { const o = escapeHtml(orgName(env)); return o ? o : (L === 'fr' ? 'cette organisation' : 'this organization'); };
+
 function page(titleEn, titleFr, en, fr, form = false) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titleEn} · Mont Carmel</title>
-  <style>body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;background:#f8f9fc;color:#1c2140;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}main{background:#fff;border:1px solid #e2e5ef;border-radius:16px;padding:28px;max-width:440px;width:100%}h1{font-size:1.25rem;margin:0 0 6px;color:#1f2a5c}p{color:#5f6680;margin:0 0 14px}hr{border:0;border-top:1px solid #e2e5ef;margin:18px 0}button{background:#8a2121;color:#fff;border:0;border-radius:10px;padding:11px 20px;font-size:1rem;cursor:pointer}</style></head>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titleEn} · Cue</title>
+  <style>body{font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;background:#f8f9fc;color:#1c2140;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}main{background:#fff;border:1px solid #e2e5ef;border-radius:16px;padding:28px;max-width:440px;width:100%}h1{font-size:1.25rem;margin:0 0 6px;color:#1f2a5c}p{color:#5f6680;margin:0 0 14px}hr{border:0;border-top:1px solid #e2e5ef;margin:18px 0}button{background:#4f46e5;color:#fff;border:0;border-radius:10px;padding:11px 20px;font-size:1rem;cursor:pointer}</style></head>
   <body><main><h1>${titleEn}</h1><p>${en}</p><hr><h1 lang="fr">${titleFr}</h1><p lang="fr">${fr}</p>${form ? '<form method="post"><button type="submit">Unsubscribe · Se désabonner</button></form>' : ''}</main></body></html>`;
 }

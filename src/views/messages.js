@@ -1,4 +1,4 @@
-/* Sent messages: every email and text sent from ServiceSync (admins see all; others their own). */
+/* Sent messages: every email and text sent from Cue (admins see all; others their own). */
 import { ui, me } from '../state.js';
 import { esc } from '../util.js';
 import { ic } from '../icons.js';

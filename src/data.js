@@ -84,7 +84,7 @@ export async function ensureSun(id, d) { if (S.sun[id]) return true; S.sun[id] =
 let subscribed = false;
 export function subscribe() {
   if (subscribed) return; subscribed = true;   // signing out and back in must not add a second listener
-  sb.channel('servicesync').on('postgres_changes', { event: '*', schema: 'public' }, reload).subscribe();
+  sb.channel('cue').on('postgres_changes', { event: '*', schema: 'public' }, reload).subscribe();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) reload(); });
 }
 
